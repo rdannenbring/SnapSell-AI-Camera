@@ -1,0 +1,5 @@
+{
+  "name": "SnapSell AI Camera",
+  "description": "A professional camera app for online sellers with AI-powered filters, aspect ratio control, and advanced editing tools.",
+  "requestFramePermissions": ["camera"]
+}
