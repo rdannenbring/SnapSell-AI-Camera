@@ -1,8 +1,79 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Obsidian Lens — Surface Hierarchy */
+  --color-surface-lowest: #000000;
+  --color-surface: #0e0e0e;
+  --color-surface-low: #131313;
+  --color-surface-container: #191919;
+  --color-surface-high: #1f1f1f;
+  --color-surface-highest: #262626;
+
+  /* Obsidian Lens — Primary Palette */
+  --color-primary: #69f6b8;
+  --color-primary-container: #06b77f;
+  --color-primary-dim: #58e7ab;
+  --color-on-primary: #005a3c;
+  --color-on-primary-container: #002919;
+
+  /* Obsidian Lens — Secondary & Tertiary */
+  --color-secondary: #64a8fe;
+  --color-secondary-container: #0060ac;
+  --color-tertiary: #b299ff;
+  --color-tertiary-container: #a589f8;
+
+  /* Obsidian Lens — Text & Outlines */
+  --color-on-surface: #ffffff;
+  --color-on-surface-variant: #ababab;
+  --color-outline-variant: #484848;
+  --color-outline: #757575;
+
+  /* Obsidian Lens — Error */
+  --color-error: #ff716c;
 }
 
+/* Custom range slider with primary glow */
+input[type="range"].slider-obsidian::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #69f6b8;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(105, 246, 184, 0.4);
+}
+input[type="range"].slider-obsidian::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #69f6b8;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(105, 246, 184, 0.4);
+  border: none;
+}
+
+/* Grid overlay lines */
+.grid-line-h {
+  height: 1px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.15);
+}
+.grid-line-v {
+  width: 1px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Hide scrollbar for thumbnail strips */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

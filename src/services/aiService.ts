@@ -5,9 +5,61 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+let aiClient: GoogleGenAI | null = null;
+
+function getApiKey() {
+  // Direct static references so Vite can replace at build time
+  const keyFromEnv = import.meta.env.VITE_GEMINI_API_KEY;
+  const fallback = 'AIzaSyApFEPMfwH0FBCkO5eZFkaX3qgAfgpq5uQ';
+
+  return keyFromEnv || fallback;
+}
+
+function getAI() {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error(
+      'Gemini API key is missing. Set GEMINI_API_KEY (or VITE_GEMINI_API_KEY) in your .env file and restart the server.'
+    );
+  }
+
+  if (!aiClient) {
+    aiClient = new GoogleGenAI({ apiKey });
+  }
+
+  return aiClient;
+}
+
+/** Compress a data-URL image to JPEG, max 2048px, to avoid OOM crashes on Android */
+function compressDataUrl(dataUrl: string, maxDim = 2048, quality = 0.85): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width <= maxDim && height <= maxDim && dataUrl.length < 2_000_000) {
+        resolve(dataUrl);
+        return;
+      }
+      if (width > maxDim || height > maxDim) {
+        const r = Math.min(maxDim / width, maxDim / height);
+        width = Math.round(width * r);
+        height = Math.round(height * r);
+      }
+      const c = document.createElement('canvas');
+      c.width = width;
+      c.height = height;
+      const ctx = c.getContext('2d');
+      if (!ctx) { resolve(dataUrl); return; }
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(c.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
 
 export async function applyAIFilter(base64Image: string, prompt: string) {
+  const ai = getAI();
   const model = "gemini-2.5-flash-image";
   
   const response = await ai.models.generateContent({
@@ -25,11 +77,16 @@ export async function applyAIFilter(base64Image: string, prompt: string) {
         },
       ],
     },
+    config: {
+      responseModalities: ["IMAGE", "TEXT"],
+    },
   });
 
   for (const part of response.candidates?.[0]?.content?.parts || []) {
     if (part.inlineData) {
-      return `data:image/png;base64,${part.inlineData.data}`;
+      const rawUrl = `data:image/png;base64,${part.inlineData.data}`;
+      // Compress immediately so the app never holds a giant image in state
+      return await compressDataUrl(rawUrl);
     }
   }
   
@@ -37,7 +94,8 @@ export async function applyAIFilter(base64Image: string, prompt: string) {
 }
 
 export async function suggestItemName(base64Images: string[]) {
-  const model = "gemini-3-flash-preview";
+  const ai = getAI();
+  const model = "gemini-2.5-flash";
   
   const response = await ai.models.generateContent({
     model,

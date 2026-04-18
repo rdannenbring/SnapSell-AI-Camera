@@ -4,10 +4,8 @@
  */
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { Camera, RefreshCw, Settings as SettingsIcon, Maximize, Minimize, ZoomIn, ZoomOut, Check, X as CloseIcon, ArrowRight, Trash2, RotateCcw } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { RefreshCw, Settings as SettingsIcon, ZoomIn, ZoomOut, Check, Trash2, RotateCcw, ArrowRight } from 'lucide-react';
 import { usePinch } from '@use-gesture/react';
-import { useSpring, animated } from '@react-spring/web';
 import { AspectRatio, PhotoData, AppSettings } from '../types';
 import { cn } from '../utils';
 
@@ -17,23 +15,25 @@ interface CameraViewProps {
   onProcess: () => void;
   settings: AppSettings;
   photosCount: number;
+  lastPhotoUrl: string | null;
   retakeId: string | null;
   onRetakeComplete: (photo: PhotoData) => void;
 }
 
-export default function CameraView({ 
-  onCapture, 
-  onOpenSettings, 
-  onProcess, 
-  settings, 
+export default function CameraView({
+  onCapture,
+  onOpenSettings,
+  onProcess,
+  settings,
   photosCount,
+  lastPhotoUrl,
   retakeId,
   onRetakeComplete
 }: CameraViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(settings.defaultAspectRatio);
   const [zoom, setZoom] = useState(1);
-  const zoomPresets = [0.5, 1, 2, 3, 4, 5];
+  const zoomPresets = [0.5, 1, 2, 5];
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
   const [error, setError] = useState<string | null>(null);
@@ -87,22 +87,22 @@ export default function CameraView({
 
     let targetWidth = video.videoWidth;
     let targetHeight = video.videoHeight;
-    
+
     if (aspectRatio === '1:1') {
       const size = Math.min(video.videoWidth, video.videoHeight);
       targetWidth = size;
       targetHeight = size;
     } else if (aspectRatio === '4:3') {
-      if (video.videoWidth / video.videoHeight > 4/3) {
-        targetWidth = video.videoHeight * (4/3);
+      if (video.videoWidth / video.videoHeight > 4 / 3) {
+        targetWidth = video.videoHeight * (4 / 3);
       } else {
-        targetHeight = video.videoWidth / (4/3);
+        targetHeight = video.videoWidth / (4 / 3);
       }
     } else if (aspectRatio === '16:9') {
-      if (video.videoWidth / video.videoHeight > 16/9) {
-        targetWidth = video.videoHeight * (16/9);
+      if (video.videoWidth / video.videoHeight > 16 / 9) {
+        targetWidth = video.videoHeight * (16 / 9);
       } else {
-        targetHeight = video.videoWidth / (16/9);
+        targetHeight = video.videoWidth / (16 / 9);
       }
     }
 
@@ -187,43 +187,54 @@ export default function CameraView({
   };
 
   return (
-    <div className="relative h-full w-full bg-black flex flex-col overflow-hidden font-sans">
-      {/* Top Bar */}
-      <div className="absolute top-0 left-0 right-0 z-20 p-4 flex justify-between items-center bg-gradient-to-b from-black/60 to-transparent">
-        <button onClick={onOpenSettings} className="p-2 rounded-full bg-white/10 backdrop-blur-md text-white">
-          <SettingsIcon size={24} />
+    <div className="relative h-full w-full bg-surface-lowest flex flex-col overflow-hidden font-sans">
+      {/* Top Navigation */}
+      <header className="relative z-20 flex items-center justify-between px-4 h-14 shrink-0 mt-2">
+        <button
+          onClick={onOpenSettings}
+          className="p-2 text-primary hover:bg-surface-highest transition-colors rounded-full active:scale-95"
+        >
+          <SettingsIcon size={22} />
         </button>
+
         {!previewPhoto && (
-          <div className="flex gap-2 bg-white/10 backdrop-blur-md rounded-full p-1">
+          <nav className="flex items-center bg-surface-low/80 backdrop-blur-md rounded-full p-1 border border-white/5">
             {(['1:1', '4:3', '16:9'] as AspectRatio[]).map((ratio) => (
               <button
                 key={ratio}
                 onClick={() => setAspectRatio(ratio)}
                 className={cn(
-                  "px-3 py-1 rounded-full text-xs font-medium transition-colors",
-                  aspectRatio === ratio ? "bg-white text-black" : "text-white/70 hover:text-white"
+                  "px-3 py-1 font-mono text-[10px] tracking-widest transition-all",
+                  aspectRatio === ratio
+                    ? "text-primary bg-surface-container rounded-full shadow-sm"
+                    : "text-on-surface-variant hover:text-white"
                 )}
               >
                 {ratio}
               </button>
             ))}
-          </div>
+          </nav>
         )}
+
         {!previewPhoto && (
-          <button 
+          <button
             onClick={() => setFacingMode(prev => prev === 'user' ? 'environment' : 'user')}
-            className="p-2 rounded-full bg-white/10 backdrop-blur-md text-white"
+            className="p-2 text-primary hover:bg-surface-highest transition-colors rounded-full active:scale-95"
           >
-            <RefreshCw size={24} />
+            <RefreshCw size={22} />
           </button>
         )}
-      </div>
+      </header>
 
       {/* Camera Preview / Photo Preview */}
-      <div className="flex-1 flex items-center justify-center relative touch-none">
-        <div 
+      <main className="flex-1 flex flex-col items-center justify-center min-h-0 px-4 gap-4">
+        <div
           {...(bind as any)()}
-          className={cn("relative overflow-hidden bg-zinc-900 transition-all duration-300 w-full max-w-2xl shadow-2xl", getAspectRatioClass())}
+          className={cn(
+            "relative overflow-hidden bg-surface-container rounded-2xl shadow-2xl border border-white/5 shrink touch-none",
+            "w-full max-w-[min(85vw,500px)] max-h-[45vh]",
+            getAspectRatioClass()
+          )}
         >
           {!previewPhoto ? (
             <>
@@ -239,62 +250,62 @@ export default function CameraView({
                 style={{ transform: `${facingMode === 'user' ? 'scaleX(-1) ' : ''}scale(${zoom})` }}
               />
               {error && (
-                <div className="absolute inset-0 flex items-center justify-center p-6 text-center bg-zinc-900">
+                <div className="absolute inset-0 flex items-center justify-center p-6 text-center bg-surface-container">
                   <div className="space-y-4">
-                    <p className="text-white/60 text-sm">{error}</p>
-                    <button 
+                    <p className="text-on-surface-variant text-sm">{error}</p>
+                    <button
                       onClick={startCamera}
-                      className="px-4 py-2 bg-white text-black rounded-full text-xs font-bold"
+                      className="px-4 py-2 bg-primary text-on-primary rounded-full text-xs font-bold"
                     >
                       Retry
                     </button>
                   </div>
                 </div>
               )}
-              {/* Grid Overlay */}
-              <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none opacity-20">
-                <div className="border-r border-b border-white"></div>
-                <div className="border-r border-b border-white"></div>
-                <div className="border-b border-white"></div>
-                <div className="border-r border-b border-white"></div>
-                <div className="border-r border-b border-white"></div>
-                <div className="border-b border-white"></div>
-                <div className="border-r border-white"></div>
-                <div className="border-r border-white"></div>
-                <div></div>
+              {/* 3x3 Grid Overlay */}
+              <div className="absolute inset-0 pointer-events-none opacity-40">
+                <div className="absolute top-1/3 left-0 grid-line-h"></div>
+                <div className="absolute top-2/3 left-0 grid-line-h"></div>
+                <div className="absolute left-1/3 top-0 grid-line-v"></div>
+                <div className="absolute left-2/3 top-0 grid-line-v"></div>
               </div>
             </>
           ) : (
             <img src={previewPhoto.url} className="absolute inset-0 w-full h-full object-cover" />
           )}
         </div>
-      </div>
 
-      {/* Bottom Controls */}
-      <div className="pb-10 pt-6 px-8 bg-black flex flex-col items-center gap-6 shrink-0">
-        {!previewPhoto ? (
-          <>
+        {/* Controls — only show when not in preview mode */}
+        {!previewPhoto && (
+          <div className="w-full max-w-xs flex flex-col items-center gap-4 py-2">
             {/* Zoom Presets */}
-            <div className="flex gap-3 items-center justify-center">
+            <div className="flex items-center gap-4 bg-surface-low/60 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/5">
               {zoomPresets.map((preset) => (
                 <button
                   key={preset}
                   onClick={() => setZoom(preset)}
                   className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center text-[10px] font-bold transition-all border",
-                    zoom === preset 
-                      ? "bg-white text-black border-white scale-110" 
-                      : "bg-white/5 text-white/50 border-white/10 hover:bg-white/10"
+                    "font-mono text-[10px] transition-all",
+                    zoom === preset
+                      ? "text-primary bg-primary/10 rounded-full w-7 h-7 flex items-center justify-center"
+                      : "text-on-surface-variant hover:text-primary"
                   )}
                 >
-                  {preset}x
+                  {preset === 0.5 ? '.5' : `${preset}${zoom === preset ? 'x' : ''}`}
                 </button>
               ))}
             </div>
 
             {/* Zoom Slider */}
-            <div className="w-full max-w-xs flex items-center gap-4 text-white/60">
-              <ZoomOut size={16} />
+            <div className="w-full px-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-mono text-[10px] text-on-surface-variant uppercase">Auto</span>
+                <span className="font-mono text-lg font-bold text-primary">
+                  {zoom.toFixed(1)}
+                  <span className="text-[10px] font-normal text-on-surface-variant ml-1">X</span>
+                </span>
+                <span className="font-mono text-[10px] text-on-surface-variant uppercase">Wide</span>
+              </div>
               <input
                 type="range"
                 min="0.5"
@@ -302,97 +313,101 @@ export default function CameraView({
                 step="0.1"
                 value={zoom}
                 onChange={(e) => setZoom(parseFloat(e.target.value))}
-                className="flex-1 accent-white h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
+                className="w-full h-1 bg-surface-high rounded-lg appearance-none cursor-pointer slider-obsidian"
               />
-              <ZoomIn size={16} />
-              <span className="text-xs font-mono w-8">{zoom.toFixed(1)}x</span>
             </div>
+          </div>
+        )}
+      </main>
 
-            <div className="flex items-center justify-between w-full max-w-sm">
-              <div className="w-12 h-12 rounded-full overflow-hidden bg-zinc-900 border border-white/10 flex items-center justify-center">
-                {photosCount > 0 && (
-                  <span className="text-white font-bold text-lg">{photosCount}</span>
+      {/* Bottom Action Area */}
+      <footer className="shrink-0 flex flex-col gap-2 pb-6 pt-2">
+        {!previewPhoto ? (
+          /* Live Camera State */
+          <div className="flex justify-between items-center px-8">
+            {/* Photo Counter / Gallery */}
+            <div className="flex flex-col items-center gap-1 group cursor-pointer w-14">
+              <div className="relative w-12 h-12 rounded-xl bg-surface-high border border-white/10 flex items-center justify-center overflow-hidden">
+                {lastPhotoUrl ? (
+                  <>
+                    <img src={lastPhotoUrl} className="w-full h-full object-cover rounded-xl" />
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white font-bold text-sm rounded-xl">
+                      {photosCount}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-on-surface-variant/40 text-lg">+</span>
                 )}
               </div>
-              
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCapture();
-                }}
-                disabled={!isCameraReady}
-                className="group relative flex items-center justify-center"
-                style={{ WebkitTapHighlightColor: 'transparent' }}
-              >
-                <div className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center transition-transform active:scale-90">
-                  <div className="w-16 h-16 rounded-full bg-white group-hover:scale-95 transition-transform" />
-                </div>
-              </button>
+            </div>
 
+            {/* Shutter Button */}
+            <div className="relative flex items-center justify-center">
+              <div className="absolute inset-0 bg-primary/10 blur-xl rounded-full scale-150" />
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onProcess();
-                }}
-                disabled={photosCount === 0}
-                className={cn(
-                  "w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-lg",
-                  photosCount > 0 ? "bg-emerald-500 text-white cursor-pointer hover:bg-emerald-400" : "bg-white/5 text-white/20 cursor-not-allowed"
-                )}
-                style={{ WebkitTapHighlightColor: 'transparent' }}
+                onClick={handleCapture}
+                disabled={!isCameraReady}
+                className="w-16 h-16 rounded-full border-4 border-on-surface bg-transparent p-1 transition-transform active:scale-95 duration-75 relative z-10"
               >
-                <ArrowRight size={24} />
+                <div className="w-full h-full rounded-full bg-on-surface flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full border border-surface/20" />
+                </div>
               </button>
             </div>
-          </>
-        ) : (
-          <div className="w-full max-w-sm space-y-6">
-            <div className="flex justify-between items-center px-4">
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeletePreview();
-                }}
-                className="flex flex-col items-center gap-2 text-red-500"
-                style={{ WebkitTapHighlightColor: 'transparent' }}
+
+            {/* Process / Next Button */}
+            <div className="w-12 flex justify-end">
+              <button
+                onClick={onProcess}
+                disabled={photosCount === 0}
+                className={cn(
+                  "w-11 h-11 rounded-full flex items-center justify-center active:scale-90 transition-transform",
+                  photosCount > 0
+                    ? "bg-gradient-to-br from-primary to-primary-container text-on-primary shadow-lg shadow-primary/20"
+                    : "bg-surface-high text-on-surface-variant/30 cursor-not-allowed"
+                )}
               >
-                <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center">
+                <ArrowRight size={20} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Preview State — Keep / Re-take / Delete */
+          <div className="w-full max-w-sm mx-auto">
+            <div className="flex justify-between items-center px-6">
+              <button
+                onClick={handleDeletePreview}
+                className="flex flex-col items-center gap-2 text-error"
+              >
+                <div className="w-12 h-12 rounded-full bg-error/10 flex items-center justify-center">
                   <Trash2 size={24} />
                 </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider">Delete</span>
-              </button>
-              
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRetake();
-                }}
-                className="flex flex-col items-center gap-2 text-white/60"
-                style={{ WebkitTapHighlightColor: 'transparent' }}
-              >
-                <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center">
-                  <RotateCcw size={24} />
-                </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider">Re-take</span>
+                <span className="font-mono text-[10px] font-bold uppercase tracking-wider">Delete</span>
               </button>
 
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleKeep();
-                }}
-                className="flex flex-col items-center gap-2 text-emerald-500"
-                style={{ WebkitTapHighlightColor: 'transparent' }}
+              <button
+                onClick={handleRetake}
+                className="flex flex-col items-center gap-2 text-on-surface-variant"
               >
-                <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center">
+                  <RotateCcw size={24} />
+                </div>
+                <span className="font-mono text-[10px] font-bold uppercase tracking-wider">Re-take</span>
+              </button>
+
+              <button
+                onClick={handleKeep}
+                className="flex flex-col items-center gap-2 text-primary"
+              >
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                   <Check size={24} />
                 </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider">Keep</span>
+                <span className="font-mono text-[10px] font-bold uppercase tracking-wider">Keep</span>
               </button>
             </div>
           </div>
         )}
-      </div>
+      </footer>
     </div>
   );
 }
