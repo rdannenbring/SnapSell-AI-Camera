@@ -46,7 +46,8 @@ export default function CameraView({
   const [previewPhoto, setPreviewPhoto] = useState<PhotoData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [frozenFrame, setFrozenFrame] = useState<string | null>(null);
-  const [captureFlash, setCaptureFlash] = useState(false); // flash effect in capture area
+  const [captureFlash, setCaptureFlash] = useState(false);
+  const [videoReady, setVideoReady] = useState(false); // true once video fires 'playing' after recovery
 
   // Register hardware back button handler — dismiss preview if showing
   useEffect(() => {
@@ -228,6 +229,7 @@ export default function CameraView({
     if (frozen) {
       flushSync(() => {
         setFrozenFrame(frozen);
+        setVideoReady(false); // reset so frozen frame covers video during recovery
         setIsProcessing(true);
       });
     } else {
@@ -373,27 +375,35 @@ export default function CameraView({
       {...(bind as any)()}
       className="relative h-full w-full bg-black overflow-hidden font-sans touch-none"
     >
-      {/* Three-state rendering: preview photo > frozen frame > live video */}
+      {/* Three-state rendering: preview photo > frozen frame + video behind > live video */}
       {previewPhoto ? (
         /* State 1: Show captured photo preview */
         <img src={previewPhoto.url} className="absolute inset-0 w-full h-full object-contain" />
-      ) : frozenFrame ? (
-        /* State 2: Frozen frame during capture processing — hides video to prevent play-button flash */
-        <img src={frozenFrame} className="absolute inset-0 w-full h-full object-cover" />
       ) : (
-        /* State 3: Live camera feed */
         <>
+          {/* Video feed — always present when not showing preview photo.
+              Rendered BEHIND frozen frame so stream can recover before user sees it */}
           <video
             ref={videoRef}
             autoPlay
             playsInline
             muted
+            onPlaying={() => {
+              setVideoReady(true);
+              setFrozenFrame(null);
+            }}
             className={cn(
               "absolute inset-0 w-full h-full object-cover transition-transform duration-300",
               facingMode === 'user' && "-scale-x-100"
             )}
             style={{ transform: `${facingMode === 'user' ? 'scaleX(-1) ' : ''}scale(${zoom})` }}
           />
+
+          {/* Frozen frame overlay — covers video until it recovers from ImageCapture interruption */}
+          {frozenFrame && !videoReady && (
+            <img src={frozenFrame} className="absolute inset-0 w-full h-full object-cover z-5 pointer-events-none" />
+          )}
+
           {error && (
             <div className="absolute inset-0 z-30 flex items-center justify-center p-6 text-center bg-black/80">
               <div className="space-y-4">
