@@ -276,7 +276,7 @@ export default function SettingsView({ settings, onUpdateSettings, onClose }: Se
               </div>
 
               {/* Slider */}
-              <div className="relative mb-4">
+              <div className="relative mb-3">
                 <input
                   type="range"
                   min={50}
@@ -291,6 +291,29 @@ export default function SettingsView({ settings, onUpdateSettings, onClose }: Se
                   <span className="text-[9px] font-mono text-on-surface-variant/50">75%</span>
                   <span className="text-[9px] font-mono text-on-surface-variant/50">100%</span>
                 </div>
+              </div>
+
+              {/* Quality presets */}
+              <div className="flex items-center gap-2 mb-4">
+                {[
+                  { label: 'Web', value: 60 },
+                  { label: 'Balanced', value: 80 },
+                  { label: 'Sharp', value: 90 },
+                  { label: 'Best', value: 100 },
+                ].map((preset) => (
+                  <button
+                    key={preset.value}
+                    onClick={() => updateSetting('imageQuality', preset.value)}
+                    className={cn(
+                      "flex-1 px-2 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider rounded-full transition-all border",
+                      localSettings.imageQuality === preset.value
+                        ? "bg-on-surface text-surface border-on-surface shadow-lg"
+                        : "text-on-surface-variant border-outline-variant/20 hover:border-primary/50 hover:text-on-surface"
+                    )}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
               </div>
 
               {/* Sensor info */}
@@ -321,28 +344,6 @@ export default function SettingsView({ settings, onUpdateSettings, onClose }: Se
                 })}
               </div>
 
-              {/* Quality presets */}
-              <div className="flex items-center gap-2 mt-4">
-                {[
-                  { label: 'Web', value: 60 },
-                  { label: 'Balanced', value: 80 },
-                  { label: 'Sharp', value: 90 },
-                  { label: 'Best', value: 100 },
-                ].map((preset) => (
-                  <button
-                    key={preset.value}
-                    onClick={() => updateSetting('imageQuality', preset.value)}
-                    className={cn(
-                      "flex-1 px-2 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider rounded-full transition-all border",
-                      localSettings.imageQuality === preset.value
-                        ? "bg-on-surface text-surface border-on-surface shadow-lg"
-                        : "text-on-surface-variant border-outline-variant/20 hover:border-primary/50 hover:text-on-surface"
-                    )}
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
         </section>
