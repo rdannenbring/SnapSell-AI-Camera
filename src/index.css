@@ -69,6 +69,17 @@ input[type="range"].slider-obsidian::-moz-range-thumb {
   background: rgba(255, 255, 255, 0.15);
 }
 
+/* Suppress default video poster/play icon */
+video::-webkit-media-controls {
+  display: none !important;
+}
+video::-webkit-media-controls-enclosure {
+  display: none !important;
+}
+video::-webkit-media-controls-panel {
+  display: none !important;
+}
+
 /* Hide scrollbar for thumbnail strips */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

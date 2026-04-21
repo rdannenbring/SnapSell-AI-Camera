@@ -4,6 +4,7 @@
  */
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { flushSync } from 'react-dom';
 import { RefreshCw, Settings as SettingsIcon, ZoomIn, ZoomOut, Check, Trash2, RotateCcw, ArrowRight } from 'lucide-react';
 import { usePinch } from '@use-gesture/react';
 import { AspectRatio, PhotoData, AppSettings } from '../types';
@@ -221,10 +222,19 @@ export default function CameraView({
 
     // 1. Grab frozen frame BEFORE any capture starts
     const frozen = grabFrozenFrame();
-    if (frozen) setFrozenFrame(frozen);
-    setIsProcessing(true);
 
-    // 2. Wait for React to render the frozen frame and hide the video
+    // Use flushSync to force synchronous DOM update — ensures video is
+    // removed from DOM before ImageCapture starts, preventing play-icon artifact
+    if (frozen) {
+      flushSync(() => {
+        setFrozenFrame(frozen);
+        setIsProcessing(true);
+      });
+    } else {
+      setIsProcessing(true);
+    }
+
+    // 2. Wait one paint frame to ensure the browser has composited the change
     await waitForPaint();
 
     // 3. Now trigger the capture-area flash effect
