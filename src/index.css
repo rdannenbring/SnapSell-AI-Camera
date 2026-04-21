@@ -77,3 +77,9 @@ input[type="range"].slider-obsidian::-moz-range-thumb {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Shutter flash animation — starts black, fades to transparent */
+@keyframes shutter-flash {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}

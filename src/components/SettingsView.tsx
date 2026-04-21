@@ -4,8 +4,9 @@
  */
 
 import React, { useState } from 'react';
-import { X, Info, FolderOpen, Layout, Eye, Camera } from 'lucide-react';
+import { X, Info, FolderOpen, Layout, Eye, Camera, Key, EyeOff, Eye as EyeIcon } from 'lucide-react';
 import { AppSettings, AspectRatio } from '../types';
+import { obscureApiKey, isObscuredKey } from '../services/aiService';
 import { cn } from '../utils';
 
 interface SettingsViewProps {
@@ -17,6 +18,55 @@ interface SettingsViewProps {
 export default function SettingsView({ settings, onUpdateSettings, onClose }: SettingsViewProps) {
   const [localSettings, setLocalSettings] = useState<AppSettings>(settings);
   const [pickStatus, setPickStatus] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
+
+  // Build-time default key (from .env), obscured for display
+  const buildTimeKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+  const buildTimeKeyObscured = buildTimeKey ? obscureApiKey(buildTimeKey) : '';
+
+  // Determine what to show in the API key field:
+  // - If user has set a runtime key → show it (or obscured)
+  // - If no runtime key but build-time key exists → show obscured build-time key
+  // - Otherwise → empty
+  const getApiKeyDisplayValue = () => {
+    if (localSettings.geminiApiKey) {
+      return showApiKey ? localSettings.geminiApiKey : obscureApiKey(localSettings.geminiApiKey);
+    }
+    if (buildTimeKey) {
+      return buildTimeKeyObscured;
+    }
+    return '';
+  };
+
+  const handleApiKeyChange = (value: string) => {
+    // If user edited the obscured value, treat as new key
+    if (isObscuredKey(value) && value === buildTimeKeyObscured) {
+      // User didn't actually change it — keep using build-time default
+      updateSetting('geminiApiKey', undefined);
+    } else {
+      updateSetting('geminiApiKey', value || undefined);
+    }
+  };
+
+  const handleApiKeyFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    // On focus, if showing obscured build-time key, clear it so user can type new key
+    if (!localSettings.geminiApiKey && buildTimeKey) {
+      e.target.value = '';
+    }
+    setShowApiKey(true);
+  };
+
+  const handleApiKeyBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (!value && buildTimeKey) {
+      // User cleared it — revert to build-time default
+      e.target.value = buildTimeKeyObscured;
+      updateSetting('geminiApiKey', undefined);
+    } else if (value && !isObscuredKey(value)) {
+      handleApiKeyChange(value);
+    }
+    setShowApiKey(false);
+  };
 
   const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     const updated = { ...localSettings, [key]: value };
@@ -138,6 +188,56 @@ export default function SettingsView({ settings, onUpdateSettings, onClose }: Se
                     : "left-1 bg-on-surface-variant"
                 )} />
               </button>
+            </div>
+          </div>
+        </section>
+
+        {/* AI / GEMINI API KEY */}
+        <section className="mb-10">
+          <h2 className="text-[10px] font-mono font-bold text-on-surface-variant tracking-[0.2em] uppercase mb-4 px-2">
+            AI Configuration
+          </h2>
+          <div className="bg-surface-container rounded-lg overflow-hidden border border-outline-variant/10 shadow-xl">
+            <div className="p-5 hover:bg-surface-high transition-colors">
+              <div className="flex items-center gap-4 mb-3">
+                <Key size={22} className="text-primary-dim" />
+                <div>
+                  <p className="font-semibold text-on-surface">Gemini API Key</p>
+                  <p className="text-xs text-on-surface-variant">Required for AI Enhance, White BG & Lifestyle filters</p>
+                </div>
+              </div>
+              <div className="relative flex items-center bg-surface-lowest rounded-xl border border-outline-variant/20">
+                <input
+                  type={showApiKey ? 'text' : 'password'}
+                  defaultValue={getApiKeyDisplayValue()}
+                  onFocus={handleApiKeyFocus}
+                  onBlur={handleApiKeyBlur}
+                  placeholder="Enter your Gemini API key..."
+                  className="w-full bg-transparent text-xs font-mono text-on-surface placeholder:text-on-surface-variant/40 p-3 pr-10 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/50"
+                />
+                <button
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); setShowApiKey(!showApiKey); }}
+                  className="absolute right-2 p-1.5 text-on-surface-variant hover:text-on-surface transition-colors"
+                >
+                  {showApiKey ? <EyeOff size={14} /> : <EyeIcon size={14} />}
+                </button>
+              </div>
+              {buildTimeKey && !localSettings.geminiApiKey && (
+                <p className="text-[10px] font-mono text-primary/60 mt-2 uppercase tracking-tighter">
+                  ✓ Build-time key loaded from .env
+                </p>
+              )}
+              {localSettings.geminiApiKey && (
+                <p className="text-[10px] font-mono text-primary/60 mt-2 uppercase tracking-tighter">
+                  ✓ Using custom API key
+                </p>
+              )}
+              {!buildTimeKey && !localSettings.geminiApiKey && (
+                <p className="text-[10px] font-mono text-error/60 mt-2 uppercase tracking-tighter">
+                  ⚠ No API key configured — AI features unavailable
+                </p>
+              )}
             </div>
           </div>
         </section>

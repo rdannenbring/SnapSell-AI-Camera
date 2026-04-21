@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { App as CapApp } from '@capacitor/app';
 import CameraView from './components/CameraView';
 import EditorView from './components/EditorView';
 import SettingsView from './components/SettingsView';
@@ -18,6 +19,28 @@ export default function App() {
   const [isPickingSaveLocation, setIsPickingSaveLocation] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
+  // Ref for child components to register a back-button handler (returns true if handled)
+  const hardwareBackRef = useRef<(() => boolean) | null>(null);
+
+  // Handle Android hardware back button / back gesture
+  useEffect(() => {
+    const handler = CapApp.addListener('backButton', () => {
+      if (hardwareBackRef.current && hardwareBackRef.current()) {
+        return; // Child component handled it
+      }
+      // Default: navigate back through views
+      if (view === 'settings') {
+        setView('camera');
+      } else if (view === 'editor') {
+        setView('camera');
+      }
+      // If on camera view, do nothing (or could exit app)
+    });
+
+    return () => {
+      handler.then(h => h.remove()).catch(() => {});
+    };
+  }, [view]);
   const [settings, setSettings] = useState<AppSettings>({
     defaultAspectRatio: '1:1',
     saveLocation: getDefaultSaveLocation(),
@@ -139,6 +162,7 @@ export default function App() {
             setEditingPhotoId(null);
             setView('editor');
           }}
+          hardwareBackRef={hardwareBackRef}
         />
       )}
 
@@ -154,6 +178,7 @@ export default function App() {
           onAddMore={() => setView('camera')}
           settings={settings}
           isSaving={isSaving}
+          hardwareBackRef={hardwareBackRef}
         />
       )}
 

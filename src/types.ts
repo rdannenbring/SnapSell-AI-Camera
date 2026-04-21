@@ -9,6 +9,7 @@ export interface AppSettings {
   defaultAspectRatio: AspectRatio;
   saveLocation: string;
   showPreviewAfterCapture: boolean;
+  geminiApiKey?: string;
 }
 
 export interface PhotoData {
