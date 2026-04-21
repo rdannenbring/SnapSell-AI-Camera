@@ -35,6 +35,7 @@ export default function CameraView({
   hardwareBackRef
 }: CameraViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(settings.defaultAspectRatio);
   const [zoom, setZoom] = useState(1);
   const zoomPresets = [0.5, 1, 2, 5];
@@ -59,31 +60,31 @@ export default function CameraView({
 
   const startCamera = useCallback(async () => {
     setError(null);
-    if (videoRef.current?.srcObject) {
-      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-      tracks.forEach(track => track.stop());
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
     }
 
     try {
+      // Request the highest resolution the sensor supports for full-res capture
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode,
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
+          width: { ideal: 4096 },
+          height: { ideal: 3072 }
         }
       });
+      streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setIsCameraReady(true);
-        // Read actual camera sensor's maximum resolution (not just what was requested)
+        // Read actual camera sensor's maximum resolution
         const track = stream.getVideoTracks()[0];
         if (track) {
-          // getCapabilities() returns the sensor's true max resolution
           const caps = (track as any).getCapabilities?.();
           if (caps?.width?.max && caps?.height?.max) {
             onCameraResolution?.(caps.width.max, caps.height.max);
           } else {
-            // Fallback to getSettings() if getCapabilities not available
             const trackSettings = track.getSettings();
             if (trackSettings.width && trackSettings.height) {
               onCameraResolution?.(trackSettings.width, trackSettings.height);
@@ -103,28 +104,25 @@ export default function CameraView({
       startCamera();
     }
     return () => {
-      if (videoRef.current?.srcObject) {
-        const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-        tracks.forEach(track => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
       }
     };
   }, [startCamera, previewPhoto]);
 
-  const handleCapture = () => {
-    if (!videoRef.current) return;
-
-    // Trigger shutter flash animation
-    setShutterFlash(true);
-
-    const video = videoRef.current;
+  /**
+   * Crop a full-resolution image to the selected aspect ratio, applying zoom.
+   * Returns a JPEG data URL at the cropped resolution.
+   */
+  const cropImageToPhoto = (img: HTMLImageElement): PhotoData => {
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const ctx = canvas.getContext('2d')!;
 
-    let targetWidth = video.videoWidth;
-    let targetHeight = video.videoHeight;
+    const srcW = img.naturalWidth || img.width;
+    const srcH = img.naturalHeight || img.height;
 
-    // Use portrait ratios when device is in portrait (e.g. "4:3" → 3:4 in portrait)
+    // Determine target aspect ratio (accounting for portrait orientation)
     const ratioW = isPortrait
       ? (aspectRatio === '1:1' ? 1 : aspectRatio === '4:3' ? 3 : 9)
       : (aspectRatio === '1:1' ? 1 : aspectRatio === '4:3' ? 4 : 16);
@@ -132,27 +130,29 @@ export default function CameraView({
       ? (aspectRatio === '1:1' ? 1 : aspectRatio === '4:3' ? 4 : 16)
       : (aspectRatio === '1:1' ? 1 : aspectRatio === '4:3' ? 3 : 9);
 
+    // Calculate crop rectangle on source image
+    let cropW: number, cropH: number;
     if (aspectRatio === '1:1') {
-      const size = Math.min(video.videoWidth, video.videoHeight);
-      targetWidth = size;
-      targetHeight = size;
-    } else if (video.videoWidth / video.videoHeight > ratioW / ratioH) {
-      targetWidth = video.videoHeight * (ratioW / ratioH);
+      const size = Math.min(srcW, srcH);
+      cropW = size;
+      cropH = size;
+    } else if (srcW / srcH > ratioW / ratioH) {
+      cropH = srcH;
+      cropW = srcH * (ratioW / ratioH);
     } else {
-      targetHeight = video.videoWidth / (ratioW / ratioH);
+      cropW = srcW;
+      cropH = srcW / (ratioW / ratioH);
     }
 
-    canvas.width = targetWidth;
-    canvas.height = targetHeight;
-
-    const offsetX = (video.videoWidth - targetWidth) / 2;
-    const offsetY = (video.videoHeight - targetHeight) / 2;
-
+    // Apply zoom: crop a smaller centered region
     const zoomFactor = 1 / zoom;
-    const zoomedWidth = targetWidth * zoomFactor;
-    const zoomedHeight = targetHeight * zoomFactor;
-    const zoomOffsetX = offsetX + (targetWidth - zoomedWidth) / 2;
-    const zoomOffsetY = offsetY + (targetHeight - zoomedHeight) / 2;
+    const zoomedW = cropW * zoomFactor;
+    const zoomedH = cropH * zoomFactor;
+    const cropX = (srcW - zoomedW) / 2;
+    const cropY = (srcH - zoomedH) / 2;
+
+    canvas.width = Math.round(cropW);
+    canvas.height = Math.round(cropH);
 
     if (facingMode === 'user') {
       ctx.translate(canvas.width, 0);
@@ -160,34 +160,82 @@ export default function CameraView({
     }
 
     ctx.drawImage(
-      video,
-      zoomOffsetX, zoomOffsetY, zoomedWidth, zoomedHeight,
-      0, 0, targetWidth, targetHeight
+      img,
+      Math.round(cropX), Math.round(cropY), Math.round(zoomedW), Math.round(zoomedH),
+      0, 0, canvas.width, canvas.height
     );
 
-    const dataUrl = canvas.toDataURL('image/png');
-    const photo: PhotoData = {
+    // Use JPEG for manageable file sizes
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+    return {
       id: Math.random().toString(36).substr(2, 9),
       url: dataUrl,
       originalUrl: dataUrl,
       aspectRatio,
       timestamp: Date.now(),
-      filters: {
-        exposure: 0,
-        contrast: 0,
-        scale: 1
-      }
+      filters: { exposure: 0, contrast: 0, scale: 1 }
     };
+  };
 
-    if (settings.showPreviewAfterCapture) {
-      setPreviewPhoto(photo);
-    } else {
-      if (retakeId) {
-        onRetakeComplete(photo);
-      } else {
-        onCapture(photo);
+  const handleCapture = async () => {
+    if (!videoRef.current || !streamRef.current) return;
+
+    // Trigger shutter flash animation
+    setShutterFlash(true);
+
+    // Try ImageCapture.takePhoto() for full sensor resolution
+    const track = streamRef.current.getVideoTracks()[0];
+    if (track && typeof ImageCapture !== 'undefined') {
+      try {
+        const imageCapture = new ImageCapture(track);
+        const blob = await imageCapture.takePhoto();
+        const img = new Image();
+        const photo = await new Promise<PhotoData>((resolve, reject) => {
+          img.onload = () => resolve(cropImageToPhoto(img));
+          img.onerror = reject;
+          img.src = URL.createObjectURL(blob);
+        });
+        URL.revokeObjectURL(img.src);
+
+        if (settings.showPreviewAfterCapture) {
+          setPreviewPhoto(photo);
+        } else if (retakeId) {
+          onRetakeComplete(photo);
+        } else {
+          onCapture(photo);
+        }
+        return;
+      } catch (err) {
+        console.warn('ImageCapture.takePhoto() failed, falling back to canvas:', err);
       }
     }
+
+    // Fallback: capture from video element canvas
+    const video = videoRef.current;
+    const img = new Image();
+    const captureFromVideo = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d')!;
+      if (facingMode === 'user') {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+      ctx.drawImage(video, 0, 0);
+      img.onload = () => {
+        const photo = cropImageToPhoto(img);
+        if (settings.showPreviewAfterCapture) {
+          setPreviewPhoto(photo);
+        } else if (retakeId) {
+          onRetakeComplete(photo);
+        } else {
+          onCapture(photo);
+        }
+      };
+      img.src = canvas.toDataURL('image/jpeg', 0.95);
+    };
+    captureFromVideo();
   };
 
   const handleKeep = () => {
