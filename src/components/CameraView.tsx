@@ -75,12 +75,19 @@ export default function CameraView({
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setIsCameraReady(true);
-        // Read actual camera sensor resolution from the active video track
+        // Read actual camera sensor's maximum resolution (not just what was requested)
         const track = stream.getVideoTracks()[0];
         if (track) {
-          const trackSettings = track.getSettings();
-          if (trackSettings.width && trackSettings.height) {
-            onCameraResolution?.(trackSettings.width, trackSettings.height);
+          // getCapabilities() returns the sensor's true max resolution
+          const caps = (track as any).getCapabilities?.();
+          if (caps?.width?.max && caps?.height?.max) {
+            onCameraResolution?.(caps.width.max, caps.height.max);
+          } else {
+            // Fallback to getSettings() if getCapabilities not available
+            const trackSettings = track.getSettings();
+            if (trackSettings.width && trackSettings.height) {
+              onCameraResolution?.(trackSettings.width, trackSettings.height);
+            }
           }
         }
       }

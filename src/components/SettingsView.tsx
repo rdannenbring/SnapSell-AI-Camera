@@ -102,15 +102,48 @@ export default function SettingsView({ settings, onUpdateSettings, onClose }: Se
   };
 
   // Estimate JPEG file size based on actual camera resolution at given quality
-  // Base model: ~120KB at q=50 for 1920×1080 (~2MP), scales linearly with megapixels
-  const estimateFileSize = (quality: number): { kb: number; label: string; resolution: string } => {
+  // For each aspect ratio, compute the cropped megapixels from the sensor's max resolution
+  const estimateFileSize = (quality: number, aspectRatio: AspectRatio): { kb: number; label: string; mp: number } => {
     const res = localSettings.cameraResolution;
-    const megapixels = res ? (res.width * res.height) / 1_000_000 : 2.07; // default 1920×1080
+    const sensorW = res?.width || 1920;
+    const sensorH = res?.height || 1080;
+
+    // Compute cropped dimensions for the given aspect ratio (landscape orientation)
+    // The crop is centered on the sensor, taking the largest rectangle matching the ratio
+    let cropW: number, cropH: number;
+    if (aspectRatio === '1:1') {
+      const size = Math.min(sensorW, sensorH);
+      cropW = size;
+      cropH = size;
+    } else if (aspectRatio === '4:3') {
+      if (sensorW / sensorH > 4 / 3) {
+        cropH = sensorH;
+        cropW = sensorH * (4 / 3);
+      } else {
+        cropW = sensorW;
+        cropH = sensorW * (3 / 4);
+      }
+    } else { // 16:9
+      if (sensorW / sensorH > 16 / 9) {
+        cropH = sensorH;
+        cropW = sensorH * (16 / 9);
+      } else {
+        cropW = sensorW;
+        cropH = sensorW * (9 / 16);
+      }
+    }
+
+    const megapixels = (cropW * cropH) / 1_000_000;
     const baseKbPerMP = 60; // ~60KB per megapixel at q=50
     const kb = Math.round(baseKbPerMP * megapixels * Math.pow(quality / 50, 3));
-    const resolution = res ? `${res.width}×${res.height}` : '1920×1080';
-    if (kb > 1024) return { kb, label: `${(kb / 1024).toFixed(1)} MB`, resolution };
-    return { kb, label: `${kb} KB`, resolution };
+    if (kb > 1024) return { kb, label: `${(kb / 1024).toFixed(1)} MB`, mp: megapixels };
+    return { kb, label: `${kb} KB`, mp: megapixels };
+  };
+
+  const getSensorLabel = () => {
+    const res = localSettings.cameraResolution;
+    if (!res) return '1920×1080';
+    return `${res.width}×${res.height}`;
   };
 
   const getQualityTier = (quality: number): { label: string; color: string } => {
@@ -120,8 +153,12 @@ export default function SettingsView({ settings, onUpdateSettings, onClose }: Se
     return { label: 'Maximum', color: 'text-primary' };
   };
 
-  const fileSizeInfo = useMemo(() => estimateFileSize(localSettings.imageQuality), [localSettings.imageQuality, localSettings.cameraResolution]);
   const qualityTier = useMemo(() => getQualityTier(localSettings.imageQuality), [localSettings.imageQuality]);
+  const ratioEstimates = useMemo(() => ({
+    '1:1': estimateFileSize(localSettings.imageQuality, '1:1'),
+    '4:3': estimateFileSize(localSettings.imageQuality, '4:3'),
+    '16:9': estimateFileSize(localSettings.imageQuality, '16:9'),
+  }), [localSettings.imageQuality, localSettings.cameraResolution]);
 
   return (
     <div className="fixed inset-0 z-60 bg-surface-lowest min-h-screen overflow-y-auto font-sans">
@@ -256,19 +293,32 @@ export default function SettingsView({ settings, onUpdateSettings, onClose }: Se
                 </div>
               </div>
 
-              {/* File size estimate card */}
-              <div className="flex items-center justify-between bg-surface-highest rounded-xl p-3 border border-outline-variant/10">
-                <div className="flex items-center gap-3">
-                  <Image size={16} className="text-on-surface-variant/50" />
-                  <div>
-                    <p className="text-[10px] font-mono text-on-surface-variant uppercase tracking-wider">Est. file size</p>
-                    <p className="text-[10px] font-mono text-on-surface-variant/40">per {fileSizeInfo.resolution} photo</p>
-                  </div>
+              {/* Sensor info */}
+              <div className="flex items-center gap-2 mb-3">
+                <Camera size={12} className="text-on-surface-variant/40" />
+                <p className="text-[10px] font-mono text-on-surface-variant/50">Sensor: {getSensorLabel()}</p>
+              </div>
+
+              {/* File size estimates per aspect ratio */}
+              <div className="bg-surface-highest rounded-xl border border-outline-variant/10 overflow-hidden">
+                <div className="px-3 pt-2.5 pb-1">
+                  <p className="text-[10px] font-mono text-on-surface-variant uppercase tracking-wider">Est. file size per photo</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-mono font-bold text-on-surface">{fileSizeInfo.label}</p>
-                  <p className="text-[10px] font-mono text-on-surface-variant/50">{qualityTier.label} quality</p>
-                </div>
+                {(['1:1', '4:3', '16:9'] as const).map((ratio, i) => {
+                  const est = ratioEstimates[ratio];
+                  return (
+                    <div key={ratio} className={cn(
+                      "flex items-center justify-between px-3 py-2",
+                      i < 2 && "border-b border-outline-variant/5"
+                    )}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">{ratio}</span>
+                        <span className="text-[10px] font-mono text-on-surface-variant/40">{est.mp.toFixed(1)} MP</span>
+                      </div>
+                      <span className="text-xs font-mono font-bold text-on-surface">{est.label}</span>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Quality presets */}
