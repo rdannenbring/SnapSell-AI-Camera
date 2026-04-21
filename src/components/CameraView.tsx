@@ -43,9 +43,9 @@ export default function CameraView({
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
   const [error, setError] = useState<string | null>(null);
   const [previewPhoto, setPreviewPhoto] = useState<PhotoData | null>(null);
-  const [shutterFlash, setShutterFlash] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [frozenFrame, setFrozenFrame] = useState<string | null>(null); // low-res frame to show during capture
+  const [frozenFrame, setFrozenFrame] = useState<string | null>(null);
+  const [captureFlash, setCaptureFlash] = useState(false); // flash effect in capture area
 
   // Register hardware back button handler — dismiss preview if showing
   useEffect(() => {
@@ -209,19 +209,29 @@ export default function CameraView({
     return canvas.toDataURL('image/jpeg', 0.7);
   };
 
+  /**
+   * Wait for the next browser paint to ensure DOM changes are visible.
+   */
+  const waitForPaint = () => new Promise<void>(resolve => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+
   const handleCapture = async () => {
     if (!videoRef.current || !streamRef.current) return;
 
-    // Immediately freeze the current video frame to prevent black screen
+    // 1. Grab frozen frame BEFORE any capture starts
     const frozen = grabFrozenFrame();
     if (frozen) setFrozenFrame(frozen);
-
-    // Trigger shutter flash animation
-    setShutterFlash(true);
     setIsProcessing(true);
 
+    // 2. Wait for React to render the frozen frame and hide the video
+    await waitForPaint();
+
+    // 3. Now trigger the capture-area flash effect
+    setCaptureFlash(true);
+
     try {
-      // Try ImageCapture.takePhoto() for full sensor resolution
+      // 4. Capture at full sensor resolution
       const track = streamRef.current.getVideoTracks()[0];
       if (track && typeof ImageCapture !== 'undefined') {
         try {
@@ -230,6 +240,7 @@ export default function CameraView({
           const photo = await cropBlobToPhoto(blob);
 
           setIsProcessing(false);
+          setCaptureFlash(false);
           setFrozenFrame(null);
           if (settings.showPreviewAfterCapture) {
             setPreviewPhoto(photo);
@@ -256,13 +267,13 @@ export default function CameraView({
       }
       ctx.drawImage(video, 0, 0);
 
-      // Crop via createImageBitmap for consistency
       const videoBlob = await new Promise<Blob>((resolve) => {
         canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.95);
       });
       const photo = await cropBlobToPhoto(videoBlob);
 
       setIsProcessing(false);
+      setCaptureFlash(false);
       setFrozenFrame(null);
       if (settings.showPreviewAfterCapture) {
         setPreviewPhoto(photo);
@@ -274,6 +285,7 @@ export default function CameraView({
     } catch (err) {
       console.error('Capture failed:', err);
       setIsProcessing(false);
+      setCaptureFlash(false);
       setFrozenFrame(null);
     }
   };
@@ -407,6 +419,21 @@ export default function CameraView({
             </div>
           </div>
         </>
+      )}
+
+      {/* Capture-area flash effect — white flash limited to the frame guide area */}
+      {captureFlash && (
+        <div className="absolute inset-0 z-15 flex items-center justify-center pointer-events-none">
+          <div
+            className="rounded-md bg-white/90"
+            style={{
+              aspectRatio: getFrameAspectRatio(),
+              width: `min(100vw, calc(100vh * ${getFrameRatioValue()}))`,
+              animation: 'capture-flash 300ms ease-out forwards',
+            }}
+            onAnimationEnd={() => setCaptureFlash(false)}
+          />
+        </div>
       )}
 
       {/* ===== OVERLAID CONTROLS ===== */}
