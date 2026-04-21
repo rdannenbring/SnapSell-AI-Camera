@@ -18,6 +18,7 @@ interface CameraViewProps {
   lastPhotoUrl: string | null;
   retakeId: string | null;
   onRetakeComplete: (photo: PhotoData) => void;
+  onCameraResolution?: (width: number, height: number) => void;
   hardwareBackRef?: React.MutableRefObject<(() => boolean) | null>;
 }
 
@@ -30,6 +31,7 @@ export default function CameraView({
   lastPhotoUrl,
   retakeId,
   onRetakeComplete,
+  onCameraResolution,
   hardwareBackRef
 }: CameraViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -73,13 +75,21 @@ export default function CameraView({
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setIsCameraReady(true);
+        // Read actual camera sensor resolution from the active video track
+        const track = stream.getVideoTracks()[0];
+        if (track) {
+          const trackSettings = track.getSettings();
+          if (trackSettings.width && trackSettings.height) {
+            onCameraResolution?.(trackSettings.width, trackSettings.height);
+          }
+        }
       }
     } catch (err) {
       console.error("Error accessing camera:", err);
       setError("Unable to access camera. Please check permissions.");
       setIsCameraReady(false);
     }
-  }, [facingMode]);
+  }, [facingMode, onCameraResolution]);
 
   useEffect(() => {
     if (!previewPhoto) {

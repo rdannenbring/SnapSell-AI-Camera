@@ -143,6 +143,15 @@ export default function App() {
     setView('camera');
   };
 
+  const handleCameraResolution = (width: number, height: number) => {
+    setSettings(prev => {
+      if (prev.cameraResolution?.width === width && prev.cameraResolution?.height === height) return prev;
+      const updated = { ...prev, cameraResolution: { width, height } };
+      localStorage.setItem('snapsell_settings', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   const handleDelete = (id: string) => {
     setPhotos(prev => prev.filter(p => p.id !== id));
   };
@@ -158,6 +167,7 @@ export default function App() {
           photosCount={photos.length}
           lastPhotoUrl={photos.length > 0 ? photos[photos.length - 1].url : null}
           retakeId={editingPhotoId}
+          onCameraResolution={handleCameraResolution}
           onRetakeComplete={(photo) => {
             setPhotos(prev => prev.map(p => p.id === editingPhotoId ? { ...photo, id: editingPhotoId } : p));
             setEditingPhotoId(null);

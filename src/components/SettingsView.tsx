@@ -101,12 +101,16 @@ export default function SettingsView({ settings, onUpdateSettings, onClose }: Se
     }
   };
 
-  // Estimate JPEG file size for a 1920×1080 photo at given quality
-  const estimateFileSize = (quality: number): { kb: number; label: string } => {
-    // Empirical model: ~120KB at q=50, cubic growth to ~960KB at q=100
-    const kb = Math.round(120 * Math.pow(quality / 50, 3));
-    if (kb > 1024) return { kb, label: `${(kb / 1024).toFixed(1)} MB` };
-    return { kb, label: `${kb} KB` };
+  // Estimate JPEG file size based on actual camera resolution at given quality
+  // Base model: ~120KB at q=50 for 1920×1080 (~2MP), scales linearly with megapixels
+  const estimateFileSize = (quality: number): { kb: number; label: string; resolution: string } => {
+    const res = localSettings.cameraResolution;
+    const megapixels = res ? (res.width * res.height) / 1_000_000 : 2.07; // default 1920×1080
+    const baseKbPerMP = 60; // ~60KB per megapixel at q=50
+    const kb = Math.round(baseKbPerMP * megapixels * Math.pow(quality / 50, 3));
+    const resolution = res ? `${res.width}×${res.height}` : '1920×1080';
+    if (kb > 1024) return { kb, label: `${(kb / 1024).toFixed(1)} MB`, resolution };
+    return { kb, label: `${kb} KB`, resolution };
   };
 
   const getQualityTier = (quality: number): { label: string; color: string } => {
@@ -116,7 +120,7 @@ export default function SettingsView({ settings, onUpdateSettings, onClose }: Se
     return { label: 'Maximum', color: 'text-primary' };
   };
 
-  const fileSizeInfo = useMemo(() => estimateFileSize(localSettings.imageQuality), [localSettings.imageQuality]);
+  const fileSizeInfo = useMemo(() => estimateFileSize(localSettings.imageQuality), [localSettings.imageQuality, localSettings.cameraResolution]);
   const qualityTier = useMemo(() => getQualityTier(localSettings.imageQuality), [localSettings.imageQuality]);
 
   return (
@@ -258,7 +262,7 @@ export default function SettingsView({ settings, onUpdateSettings, onClose }: Se
                   <Image size={16} className="text-on-surface-variant/50" />
                   <div>
                     <p className="text-[10px] font-mono text-on-surface-variant uppercase tracking-wider">Est. file size</p>
-                    <p className="text-[10px] font-mono text-on-surface-variant/40">per 1920×1080 photo</p>
+                    <p className="text-[10px] font-mono text-on-surface-variant/40">per {fileSizeInfo.resolution} photo</p>
                   </div>
                 </div>
                 <div className="text-right">

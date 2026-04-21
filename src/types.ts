@@ -11,6 +11,7 @@ export interface AppSettings {
   showPreviewAfterCapture: boolean;
   geminiApiKey?: string;
   imageQuality: number; // 50–100 JPEG quality (default 85)
+  cameraResolution?: { width: number; height: number }; // actual sensor resolution
 }
 
 export interface PhotoData {
