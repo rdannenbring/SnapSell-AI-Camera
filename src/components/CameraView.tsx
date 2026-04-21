@@ -113,7 +113,7 @@ export default function CameraView({
       : (aspectRatio === '1:1' ? 1 : aspectRatio === '4:3' ? 4 : 16);
     const ratioH = isPortrait
       ? (aspectRatio === '1:1' ? 1 : aspectRatio === '4:3' ? 4 : 16)
-      : (aspectRatio === '1:1' ? 1 : 3);
+      : (aspectRatio === '1:1' ? 1 : aspectRatio === '4:3' ? 3 : 9);
 
     if (aspectRatio === '1:1') {
       const size = Math.min(video.videoWidth, video.videoHeight);
