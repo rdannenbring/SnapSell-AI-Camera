@@ -45,6 +45,7 @@ export default function CameraView({
   const [previewPhoto, setPreviewPhoto] = useState<PhotoData | null>(null);
   const [shutterFlash, setShutterFlash] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [frozenFrame, setFrozenFrame] = useState<string | null>(null); // low-res frame to show during capture
 
   // Register hardware back button handler — dismiss preview if showing
   useEffect(() => {
@@ -190,8 +191,30 @@ export default function CameraView({
     };
   };
 
+  /**
+   * Grab a quick low-res frame from the video element to use as a frozen preview.
+   */
+  const grabFrozenFrame = (): string | null => {
+    const video = videoRef.current;
+    if (!video) return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d')!;
+    if (facingMode === 'user') {
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(video, 0, 0);
+    return canvas.toDataURL('image/jpeg', 0.7);
+  };
+
   const handleCapture = async () => {
     if (!videoRef.current || !streamRef.current) return;
+
+    // Immediately freeze the current video frame to prevent black screen
+    const frozen = grabFrozenFrame();
+    if (frozen) setFrozenFrame(frozen);
 
     // Trigger shutter flash animation
     setShutterFlash(true);
@@ -207,6 +230,7 @@ export default function CameraView({
           const photo = await cropBlobToPhoto(blob);
 
           setIsProcessing(false);
+          setFrozenFrame(null);
           if (settings.showPreviewAfterCapture) {
             setPreviewPhoto(photo);
           } else if (retakeId) {
@@ -239,6 +263,7 @@ export default function CameraView({
       const photo = await cropBlobToPhoto(videoBlob);
 
       setIsProcessing(false);
+      setFrozenFrame(null);
       if (settings.showPreviewAfterCapture) {
         setPreviewPhoto(photo);
       } else if (retakeId) {
@@ -249,6 +274,7 @@ export default function CameraView({
     } catch (err) {
       console.error('Capture failed:', err);
       setIsProcessing(false);
+      setFrozenFrame(null);
     }
   };
 
@@ -332,6 +358,11 @@ export default function CameraView({
           style={{ animation: 'shutter-flash 200ms ease-out forwards' }}
           onAnimationEnd={() => setShutterFlash(false)}
         />
+      )}
+
+      {/* Frozen frame overlay — prevents black screen during ImageCapture processing */}
+      {frozenFrame && !previewPhoto && (
+        <img src={frozenFrame} className="absolute inset-0 w-full h-full object-cover z-15 pointer-events-none" />
       )}
 
       {/* Full-screen Video Feed */}
