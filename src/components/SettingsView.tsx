@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { X, Info, FolderOpen, Layout, Eye, Camera, Key, EyeOff, Eye as EyeIcon } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { X, Info, FolderOpen, Layout, Eye, Camera, Key, EyeOff, Eye as EyeIcon, Image, Gauge } from 'lucide-react';
 import { AppSettings, AspectRatio } from '../types';
 import { obscureApiKey, isObscuredKey } from '../services/aiService';
 import { cn } from '../utils';
@@ -101,6 +101,24 @@ export default function SettingsView({ settings, onUpdateSettings, onClose }: Se
     }
   };
 
+  // Estimate JPEG file size for a 1920×1080 photo at given quality
+  const estimateFileSize = (quality: number): { kb: number; label: string } => {
+    // Empirical model: ~120KB at q=50, cubic growth to ~960KB at q=100
+    const kb = Math.round(120 * Math.pow(quality / 50, 3));
+    if (kb > 1024) return { kb, label: `${(kb / 1024).toFixed(1)} MB` };
+    return { kb, label: `${kb} KB` };
+  };
+
+  const getQualityTier = (quality: number): { label: string; color: string } => {
+    if (quality <= 59) return { label: 'Low', color: 'text-error' };
+    if (quality <= 74) return { label: 'Medium', color: 'text-yellow-400' };
+    if (quality <= 89) return { label: 'High', color: 'text-primary' };
+    return { label: 'Maximum', color: 'text-primary' };
+  };
+
+  const fileSizeInfo = useMemo(() => estimateFileSize(localSettings.imageQuality), [localSettings.imageQuality]);
+  const qualityTier = useMemo(() => getQualityTier(localSettings.imageQuality), [localSettings.imageQuality]);
+
   return (
     <div className="fixed inset-0 z-60 bg-surface-lowest min-h-screen overflow-y-auto font-sans">
       {/* Header */}
@@ -188,6 +206,89 @@ export default function SettingsView({ settings, onUpdateSettings, onClose }: Se
                     : "left-1 bg-on-surface-variant"
                 )} />
               </button>
+            </div>
+          </div>
+        </section>
+
+        {/* IMAGE QUALITY */}
+        <section className="mb-10">
+          <h2 className="text-[10px] font-mono font-bold text-on-surface-variant tracking-[0.2em] uppercase mb-4 px-2">
+            Image Quality
+          </h2>
+          <div className="bg-surface-container rounded-lg overflow-hidden border border-outline-variant/10 shadow-xl">
+            {/* Quality slider */}
+            <div className="p-5">
+              <div className="flex items-center gap-4 mb-4">
+                <Gauge size={22} className="text-primary-dim" />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-on-surface">JPEG Quality</p>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-mono font-bold ${qualityTier.color}`}>{qualityTier.label}</span>
+                      <span className="bg-surface-highest px-3 py-1 rounded-full border border-outline-variant/20 text-xs font-mono font-bold text-primary">
+                        {localSettings.imageQuality}%
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-on-surface-variant mt-0.5">Higher quality = larger file size</p>
+                </div>
+              </div>
+
+              {/* Slider */}
+              <div className="relative mb-4">
+                <input
+                  type="range"
+                  min={50}
+                  max={100}
+                  step={5}
+                  value={localSettings.imageQuality}
+                  onChange={(e) => updateSetting('imageQuality', parseInt(e.target.value))}
+                  className="w-full h-2 bg-surface-highest rounded-lg appearance-none cursor-pointer slider-obsidian"
+                />
+                <div className="flex justify-between mt-1">
+                  <span className="text-[9px] font-mono text-on-surface-variant/50">50%</span>
+                  <span className="text-[9px] font-mono text-on-surface-variant/50">75%</span>
+                  <span className="text-[9px] font-mono text-on-surface-variant/50">100%</span>
+                </div>
+              </div>
+
+              {/* File size estimate card */}
+              <div className="flex items-center justify-between bg-surface-highest rounded-xl p-3 border border-outline-variant/10">
+                <div className="flex items-center gap-3">
+                  <Image size={16} className="text-on-surface-variant/50" />
+                  <div>
+                    <p className="text-[10px] font-mono text-on-surface-variant uppercase tracking-wider">Est. file size</p>
+                    <p className="text-[10px] font-mono text-on-surface-variant/40">per 1920×1080 photo</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-mono font-bold text-on-surface">{fileSizeInfo.label}</p>
+                  <p className="text-[10px] font-mono text-on-surface-variant/50">{qualityTier.label} quality</p>
+                </div>
+              </div>
+
+              {/* Quality presets */}
+              <div className="flex items-center gap-2 mt-4">
+                {[
+                  { label: 'Web', value: 60 },
+                  { label: 'Balanced', value: 80 },
+                  { label: 'Sharp', value: 90 },
+                  { label: 'Best', value: 100 },
+                ].map((preset) => (
+                  <button
+                    key={preset.value}
+                    onClick={() => updateSetting('imageQuality', preset.value)}
+                    className={cn(
+                      "flex-1 px-2 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider rounded-full transition-all border",
+                      localSettings.imageQuality === preset.value
+                        ? "bg-on-surface text-surface border-on-surface shadow-lg"
+                        : "text-on-surface-variant border-outline-variant/20 hover:border-primary/50 hover:text-on-surface"
+                    )}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </section>

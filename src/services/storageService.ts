@@ -55,7 +55,7 @@ function buildFileName(baseName: string, index: number, timestamp: number) {
   const hh = String(date.getHours()).padStart(2, '0');
   const min = String(date.getMinutes()).padStart(2, '0');
   const ss = String(date.getSeconds()).padStart(2, '0');
-  return `${baseName}-${index + 1}-${yyyy}${mm}${dd}-${hh}${min}${ss}.png`;
+  return `${baseName}-${index + 1}-${yyyy}${mm}${dd}-${hh}${min}${ss}.jpg`;
 }
 
 function isContentUri(value: string) {
@@ -117,9 +117,9 @@ function buildDestinationCandidates(saveLocation: string, fileName: string) {
 
 /**
  * Compress and resize a data URL image to reduce memory footprint.
- * Converts to JPEG at 85% quality, max 2048px on longest side.
+ * Converts to JPEG at the specified quality, max 4096px on longest side.
  */
-async function compressImage(dataUrl: string, maxDimension = 2048, quality = 0.85): Promise<string> {
+async function compressImage(dataUrl: string, maxDimension = 4096, quality = 0.85): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
@@ -148,8 +148,8 @@ async function compressImage(dataUrl: string, maxDimension = 2048, quality = 0.8
   });
 }
 
-async function savePhotoWithFilesystem(photo: PhotoData, fileName: string, fallbackFolderName: string) {
-  const compressedUrl = await compressImage(photo.url);
+async function savePhotoWithFilesystem(photo: PhotoData, fileName: string, fallbackFolderName: string, quality: number) {
+  const compressedUrl = await compressImage(photo.url, 4096, quality);
   const base64Data = compressedUrl.includes(',') ? compressedUrl.split(',')[1] : compressedUrl;
 
   await Filesystem.writeFile({
@@ -167,8 +167,8 @@ async function savePhotoWithFilesystem(photo: PhotoData, fileName: string, fallb
   return uri.uri;
 }
 
-async function savePhotoToSelectedLocation(photo: PhotoData, fileName: string, saveLocation: string) {
-  const compressedUrl = await compressImage(photo.url);
+async function savePhotoToSelectedLocation(photo: PhotoData, fileName: string, saveLocation: string, quality: number) {
+  const compressedUrl = await compressImage(photo.url, 4096, quality);
   const base64Data = compressedUrl.includes(',') ? compressedUrl.split(',')[1] : compressedUrl;
   const destinationCandidates = buildDestinationCandidates(saveLocation, fileName);
   const errors: string[] = [];
@@ -248,6 +248,7 @@ export async function savePhotosToDevice(
   photos: PhotoData[],
   saveLocation: string,
   itemName?: string,
+  imageQuality?: number,
 ) {
   const savedPaths: string[] = [];
   let usedFallback = false;
@@ -276,7 +277,7 @@ export async function savePhotosToDevice(
 
     if (isNativeAndroid() && saveLocation) {
       try {
-        const destination = await savePhotoToSelectedLocation(photo, fileName, saveLocation);
+        const destination = await savePhotoToSelectedLocation(photo, fileName, saveLocation, imageQuality ?? 0.85);
         savedPaths.push(destination);
         continue;
       } catch (err) {
@@ -289,7 +290,7 @@ export async function savePhotosToDevice(
       }
     }
 
-    const fallbackUri = await savePhotoWithFilesystem(photo, fileName, 'SnapSell');
+    const fallbackUri = await savePhotoWithFilesystem(photo, fileName, 'SnapSell', imageQuality ?? 0.85);
     usedFallback = true;
     savedPaths.push(fallbackUri);
   }

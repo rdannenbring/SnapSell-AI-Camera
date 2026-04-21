@@ -44,7 +44,8 @@ export default function App() {
   const [settings, setSettings] = useState<AppSettings>({
     defaultAspectRatio: '1:1',
     saveLocation: getDefaultSaveLocation(),
-    showPreviewAfterCapture: true
+    showPreviewAfterCapture: true,
+    imageQuality: 85,
   });
 
   // Load settings from localStorage if available
@@ -114,7 +115,7 @@ export default function App() {
   const handleSaveAll = async (updatedPhotos: PhotoData[], itemName?: string) => {
     setIsSaving(true);
     try {
-      const result = await savePhotosToDevice(updatedPhotos, settings.saveLocation, itemName);
+      const result = await savePhotosToDevice(updatedPhotos, settings.saveLocation, itemName, settings.imageQuality / 100);
       const savedPaths = Array.isArray(result) ? result : result.savedPaths;
       const usedFallback = Array.isArray(result) ? false : result.usedFallback;
 

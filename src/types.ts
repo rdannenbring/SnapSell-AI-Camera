@@ -10,6 +10,7 @@ export interface AppSettings {
   saveLocation: string;
   showPreviewAfterCapture: boolean;
   geminiApiKey?: string;
+  imageQuality: number; // 50–100 JPEG quality (default 85)
 }
 
 export interface PhotoData {

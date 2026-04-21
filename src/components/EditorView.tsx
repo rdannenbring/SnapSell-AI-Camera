@@ -349,7 +349,7 @@ export default function EditorView({ photos, onClose, onSave, onRetake, onDelete
       if (!ctx) return;
 
       ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
-      const croppedUrl = canvas.toDataURL('image/jpeg', 0.9);
+      const croppedUrl = canvas.toDataURL('image/jpeg', settings.imageQuality / 100);
 
       updateCurrentPhoto({
         url: croppedUrl,
@@ -397,7 +397,7 @@ export default function EditorView({ photos, onClose, onSave, onRetake, onDelete
           const offsetY = (h - scaledH) / 2;
 
           ctx.drawImage(img, offsetX, offsetY, scaledW, scaledH);
-          resolve({ ...photo, url: canvas.toDataURL('image/jpeg', 0.9) });
+          resolve({ ...photo, url: canvas.toDataURL('image/jpeg', settings.imageQuality / 100) });
         };
         img.onerror = () => resolve(photo);
         img.src = photo.url;
