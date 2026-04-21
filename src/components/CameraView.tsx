@@ -44,6 +44,7 @@ export default function CameraView({
   const [error, setError] = useState<string | null>(null);
   const [previewPhoto, setPreviewPhoto] = useState<PhotoData | null>(null);
   const [shutterFlash, setShutterFlash] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Register hardware back button handler — dismiss preview if showing
   useEffect(() => {
@@ -66,12 +67,13 @@ export default function CameraView({
     }
 
     try {
-      // Request the highest resolution the sensor supports for full-res capture
+      // Request moderate resolution for smooth viewfinder — ImageCapture.takePhoto()
+      // captures at full sensor resolution regardless of stream settings
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode,
-          width: { ideal: 4096 },
-          height: { ideal: 3072 }
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
         }
       });
       streamRef.current = stream;
@@ -112,17 +114,9 @@ export default function CameraView({
   }, [startCamera, previewPhoto]);
 
   /**
-   * Crop a full-resolution image to the selected aspect ratio, applying zoom.
-   * Returns a JPEG data URL at the cropped resolution.
+   * Compute crop rectangle for the selected aspect ratio and zoom level.
    */
-  const cropImageToPhoto = (img: HTMLImageElement): PhotoData => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d')!;
-
-    const srcW = img.naturalWidth || img.width;
-    const srcH = img.naturalHeight || img.height;
-
-    // Determine target aspect ratio (accounting for portrait orientation)
+  const getCropRect = (srcW: number, srcH: number) => {
     const ratioW = isPortrait
       ? (aspectRatio === '1:1' ? 1 : aspectRatio === '4:3' ? 3 : 9)
       : (aspectRatio === '1:1' ? 1 : aspectRatio === '4:3' ? 4 : 16);
@@ -130,7 +124,6 @@ export default function CameraView({
       ? (aspectRatio === '1:1' ? 1 : aspectRatio === '4:3' ? 4 : 16)
       : (aspectRatio === '1:1' ? 1 : aspectRatio === '4:3' ? 3 : 9);
 
-    // Calculate crop rectangle on source image
     let cropW: number, cropH: number;
     if (aspectRatio === '1:1') {
       const size = Math.min(srcW, srcH);
@@ -151,21 +144,41 @@ export default function CameraView({
     const cropX = (srcW - zoomedW) / 2;
     const cropY = (srcH - zoomedH) / 2;
 
-    canvas.width = Math.round(cropW);
-    canvas.height = Math.round(cropH);
+    return { cropX, cropY, cropW, cropH };
+  };
+
+  /**
+   * Crop a Blob from ImageCapture using GPU-accelerated createImageBitmap.
+   */
+  const cropBlobToPhoto = async (blob: Blob): Promise<PhotoData> => {
+    // Decode the blob into a bitmap (GPU-accelerated)
+    const fullBitmap = await createImageBitmap(blob);
+    const srcW = fullBitmap.width;
+    const srcH = fullBitmap.height;
+
+    const { cropX, cropY, cropW, cropH } = getCropRect(srcW, srcH);
+
+    // Crop the bitmap directly (GPU-accelerated, no full-res canvas needed)
+    const croppedBitmap = await createImageBitmap(
+      fullBitmap,
+      Math.round(cropX), Math.round(cropY),
+      Math.round(cropW), Math.round(cropH)
+    );
+    fullBitmap.close();
+
+    // Draw the smaller cropped bitmap to canvas
+    const canvas = document.createElement('canvas');
+    canvas.width = croppedBitmap.width;
+    canvas.height = croppedBitmap.height;
+    const ctx = canvas.getContext('2d')!;
 
     if (facingMode === 'user') {
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
     }
+    ctx.drawImage(croppedBitmap, 0, 0);
+    croppedBitmap.close();
 
-    ctx.drawImage(
-      img,
-      Math.round(cropX), Math.round(cropY), Math.round(zoomedW), Math.round(zoomedH),
-      0, 0, canvas.width, canvas.height
-    );
-
-    // Use JPEG for manageable file sizes
     const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
     return {
       id: Math.random().toString(36).substr(2, 9),
@@ -182,38 +195,33 @@ export default function CameraView({
 
     // Trigger shutter flash animation
     setShutterFlash(true);
+    setIsProcessing(true);
 
-    // Try ImageCapture.takePhoto() for full sensor resolution
-    const track = streamRef.current.getVideoTracks()[0];
-    if (track && typeof ImageCapture !== 'undefined') {
-      try {
-        const imageCapture = new ImageCapture(track);
-        const blob = await imageCapture.takePhoto();
-        const img = new Image();
-        const photo = await new Promise<PhotoData>((resolve, reject) => {
-          img.onload = () => resolve(cropImageToPhoto(img));
-          img.onerror = reject;
-          img.src = URL.createObjectURL(blob);
-        });
-        URL.revokeObjectURL(img.src);
+    try {
+      // Try ImageCapture.takePhoto() for full sensor resolution
+      const track = streamRef.current.getVideoTracks()[0];
+      if (track && typeof ImageCapture !== 'undefined') {
+        try {
+          const imageCapture = new ImageCapture(track);
+          const blob = await imageCapture.takePhoto();
+          const photo = await cropBlobToPhoto(blob);
 
-        if (settings.showPreviewAfterCapture) {
-          setPreviewPhoto(photo);
-        } else if (retakeId) {
-          onRetakeComplete(photo);
-        } else {
-          onCapture(photo);
+          setIsProcessing(false);
+          if (settings.showPreviewAfterCapture) {
+            setPreviewPhoto(photo);
+          } else if (retakeId) {
+            onRetakeComplete(photo);
+          } else {
+            onCapture(photo);
+          }
+          return;
+        } catch (err) {
+          console.warn('ImageCapture.takePhoto() failed, falling back to canvas:', err);
         }
-        return;
-      } catch (err) {
-        console.warn('ImageCapture.takePhoto() failed, falling back to canvas:', err);
       }
-    }
 
-    // Fallback: capture from video element canvas
-    const video = videoRef.current;
-    const img = new Image();
-    const captureFromVideo = () => {
+      // Fallback: capture from video element
+      const video = videoRef.current;
       const canvas = document.createElement('canvas');
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
@@ -223,19 +231,25 @@ export default function CameraView({
         ctx.scale(-1, 1);
       }
       ctx.drawImage(video, 0, 0);
-      img.onload = () => {
-        const photo = cropImageToPhoto(img);
-        if (settings.showPreviewAfterCapture) {
-          setPreviewPhoto(photo);
-        } else if (retakeId) {
-          onRetakeComplete(photo);
-        } else {
-          onCapture(photo);
-        }
-      };
-      img.src = canvas.toDataURL('image/jpeg', 0.95);
-    };
-    captureFromVideo();
+
+      // Crop via createImageBitmap for consistency
+      const videoBlob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.95);
+      });
+      const photo = await cropBlobToPhoto(videoBlob);
+
+      setIsProcessing(false);
+      if (settings.showPreviewAfterCapture) {
+        setPreviewPhoto(photo);
+      } else if (retakeId) {
+        onRetakeComplete(photo);
+      } else {
+        onCapture(photo);
+      }
+    } catch (err) {
+      console.error('Capture failed:', err);
+      setIsProcessing(false);
+    }
   };
 
   const handleKeep = () => {
@@ -491,7 +505,7 @@ export default function CameraView({
               <div className="absolute inset-0 bg-white/10 blur-xl rounded-full scale-150" />
               <button
                 onClick={handleCapture}
-                disabled={!isCameraReady}
+                disabled={!isCameraReady || isProcessing}
                 className="w-[72px] h-[72px] rounded-full border-[3px] border-white/80 bg-transparent p-1.5 transition-transform active:scale-90 duration-75 relative z-10"
               >
                 <div className="w-full h-full rounded-full bg-white/90 flex items-center justify-center">
