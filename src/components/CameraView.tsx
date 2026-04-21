@@ -47,7 +47,6 @@ export default function CameraView({
   const [isProcessing, setIsProcessing] = useState(false);
   const [frozenFrame, setFrozenFrame] = useState<string | null>(null);
   const [captureFlash, setCaptureFlash] = useState(false);
-  const [videoReady, setVideoReady] = useState(false); // true once video fires 'playing' after recovery
 
   // Register hardware back button handler — dismiss preview if showing
   useEffect(() => {
@@ -70,8 +69,6 @@ export default function CameraView({
     }
 
     try {
-      // Request moderate resolution for smooth viewfinder — ImageCapture.takePhoto()
-      // captures at full sensor resolution regardless of stream settings
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode,
@@ -83,7 +80,6 @@ export default function CameraView({
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setIsCameraReady(true);
-        // Read actual camera sensor's maximum resolution
         const track = stream.getVideoTracks()[0];
         if (track) {
           const caps = (track as any).getCapabilities?.();
@@ -105,20 +101,15 @@ export default function CameraView({
   }, [facingMode, onCameraResolution]);
 
   useEffect(() => {
-    if (!previewPhoto) {
-      startCamera();
-    }
+    startCamera();
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
         streamRef.current = null;
       }
     };
-  }, [startCamera, previewPhoto]);
+  }, [startCamera]);
 
-  /**
-   * Compute crop rectangle for the selected aspect ratio and zoom level.
-   */
   const getCropRect = (srcW: number, srcH: number) => {
     const ratioW = isPortrait
       ? (aspectRatio === '1:1' ? 1 : aspectRatio === '4:3' ? 3 : 9)
@@ -140,7 +131,6 @@ export default function CameraView({
       cropH = srcW / (ratioW / ratioH);
     }
 
-    // Apply zoom: crop a smaller centered region
     const zoomFactor = 1 / zoom;
     const zoomedW = cropW * zoomFactor;
     const zoomedH = cropH * zoomFactor;
@@ -150,18 +140,13 @@ export default function CameraView({
     return { cropX, cropY, cropW, cropH };
   };
 
-  /**
-   * Crop a Blob from ImageCapture using GPU-accelerated createImageBitmap.
-   */
   const cropBlobToPhoto = async (blob: Blob): Promise<PhotoData> => {
-    // Decode the blob into a bitmap (GPU-accelerated)
     const fullBitmap = await createImageBitmap(blob);
     const srcW = fullBitmap.width;
     const srcH = fullBitmap.height;
 
     const { cropX, cropY, cropW, cropH } = getCropRect(srcW, srcH);
 
-    // Crop the bitmap directly (GPU-accelerated, no full-res canvas needed)
     const croppedBitmap = await createImageBitmap(
       fullBitmap,
       Math.round(cropX), Math.round(cropY),
@@ -169,7 +154,6 @@ export default function CameraView({
     );
     fullBitmap.close();
 
-    // Draw the smaller cropped bitmap to canvas
     const canvas = document.createElement('canvas');
     canvas.width = croppedBitmap.width;
     canvas.height = croppedBitmap.height;
@@ -193,9 +177,6 @@ export default function CameraView({
     };
   };
 
-  /**
-   * Grab a quick low-res frame from the video element to use as a frozen preview.
-   */
   const grabFrozenFrame = (): string | null => {
     const video = videoRef.current;
     if (!video) return null;
@@ -211,9 +192,6 @@ export default function CameraView({
     return canvas.toDataURL('image/jpeg', 0.7);
   };
 
-  /**
-   * Wait for the next browser paint to ensure DOM changes are visible.
-   */
   const waitForPaint = () => new Promise<void>(resolve => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   });
@@ -224,26 +202,25 @@ export default function CameraView({
     // 1. Grab frozen frame BEFORE any capture starts
     const frozen = grabFrozenFrame();
 
-    // Use flushSync to force synchronous DOM update — ensures video is
-    // removed from DOM before ImageCapture starts, preventing play-icon artifact
+    // 2. Use flushSync to synchronously paint the frozen frame overlay
+    //    The video stays in the DOM (never unmounted) — just covered by the frozen frame
     if (frozen) {
       flushSync(() => {
         setFrozenFrame(frozen);
-        setVideoReady(false); // reset so frozen frame covers video during recovery
         setIsProcessing(true);
       });
     } else {
       setIsProcessing(true);
     }
 
-    // 2. Wait one paint frame to ensure the browser has composited the change
+    // 3. Wait for the frozen frame to be painted on screen
     await waitForPaint();
 
-    // 3. Now trigger the capture-area flash effect
+    // 4. Trigger the capture-area flash effect
     setCaptureFlash(true);
 
     try {
-      // 4. Capture at full sensor resolution
+      // 5. Capture at full sensor resolution
       const track = streamRef.current.getVideoTracks()[0];
       if (track && typeof ImageCapture !== 'undefined') {
         try {
@@ -253,7 +230,9 @@ export default function CameraView({
 
           setIsProcessing(false);
           setCaptureFlash(false);
-          setFrozenFrame(null);
+          // NOTE: Do NOT clear frozenFrame here!
+          // The video's onPlaying callback will clear it once the stream recovers.
+          // This prevents the play-icon flash between capture complete and stream recovery.
           if (settings.showPreviewAfterCapture) {
             setPreviewPhoto(photo);
           } else if (retakeId) {
@@ -286,7 +265,6 @@ export default function CameraView({
 
       setIsProcessing(false);
       setCaptureFlash(false);
-      setFrozenFrame(null);
       if (settings.showPreviewAfterCapture) {
         setPreviewPhoto(photo);
       } else if (retakeId) {
@@ -325,7 +303,6 @@ export default function CameraView({
     setZoom(newZoom);
   });
 
-  // Detect portrait orientation for frame guide and capture
   const [isPortrait, setIsPortrait] = useState(true);
   useEffect(() => {
     const check = () => setIsPortrait(window.innerHeight > window.innerWidth);
@@ -334,13 +311,12 @@ export default function CameraView({
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // Aspect ratio for the frame guide (CSS aspect-ratio value)
   const getFrameAspectRatio = () => {
     if (isPortrait) {
       switch (aspectRatio) {
         case '1:1': return '1 / 1';
-        case '4:3': return '3 / 4';   // portrait 4:3
-        case '16:9': return '9 / 16';  // portrait 16:9
+        case '4:3': return '3 / 4';
+        case '16:9': return '9 / 16';
         default: return '1 / 1';
       }
     }
@@ -352,7 +328,6 @@ export default function CameraView({
     }
   };
 
-  // Numeric W/H ratio for CSS min() width calculation
   const getFrameRatioValue = () => {
     if (isPortrait) {
       switch (aspectRatio) {
@@ -375,75 +350,82 @@ export default function CameraView({
       {...(bind as any)()}
       className="relative h-full w-full bg-black overflow-hidden font-sans touch-none"
     >
-      {/* Three-state rendering: preview photo > frozen frame + video behind > live video */}
-      {previewPhoto ? (
-        /* State 1: Show captured photo preview */
-        <img src={previewPhoto.url} className="absolute inset-0 w-full h-full object-contain" />
-      ) : (
-        <>
-          {/* Video feed — always present when not showing preview photo.
-              Rendered BEHIND frozen frame so stream can recover before user sees it */}
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            onPlaying={() => {
-              setVideoReady(true);
-              setFrozenFrame(null);
-            }}
-            className={cn(
-              "absolute inset-0 w-full h-full object-cover transition-transform duration-300",
-              facingMode === 'user' && "-scale-x-100"
-            )}
-            style={{ transform: `${facingMode === 'user' ? 'scaleX(-1) ' : ''}scale(${zoom})` }}
-          />
+      {/* ===== LAYER 0: Video feed — ALWAYS in DOM, never unmounted ===== */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        onPlaying={() => {
+          // Video stream has recovered from ImageCapture interruption.
+          // Safe to remove frozen frame now — user will see live feed.
+          setFrozenFrame(null);
+        }}
+        className={cn(
+          "absolute inset-0 w-full h-full object-cover transition-transform duration-300",
+          facingMode === 'user' && "-scale-x-100"
+        )}
+        style={{ transform: `${facingMode === 'user' ? 'scaleX(-1) ' : ''}scale(${zoom})` }}
+      />
 
-          {/* Frozen frame overlay — covers video until it recovers from ImageCapture interruption */}
-          {frozenFrame && !videoReady && (
-            <img src={frozenFrame} className="absolute inset-0 w-full h-full object-cover z-5 pointer-events-none" />
-          )}
-
-          {error && (
-            <div className="absolute inset-0 z-30 flex items-center justify-center p-6 text-center bg-black/80">
-              <div className="space-y-4">
-                <p className="text-on-surface-variant text-sm">{error}</p>
-                <button
-                  onClick={startCamera}
-                  className="px-4 py-2 bg-primary text-on-primary rounded-full text-xs font-bold"
-                >
-                  Retry
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Capture Frame Guide — dimmed overlay with clear capture area */}
-          <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">
-            <div
-              className="relative rounded-md"
-              style={{
-                aspectRatio: getFrameAspectRatio(),
-                width: `min(100vw, calc(100vh * ${getFrameRatioValue()}))`,
-                boxShadow: '0 0 0 200vmax rgba(180, 180, 195, 0.35)',
-                border: '1.5px solid rgba(255, 255, 255, 0.35)',
-              }}
-            >
-              {/* 3x3 Grid Overlay */}
-              <div className="absolute inset-0 pointer-events-none opacity-30 rounded-md overflow-hidden">
-                <div className="absolute top-1/3 left-0 grid-line-h"></div>
-                <div className="absolute top-2/3 left-0 grid-line-h"></div>
-                <div className="absolute left-1/3 top-0 grid-line-v"></div>
-                <div className="absolute left-2/3 top-0 grid-line-v"></div>
-              </div>
-            </div>
-          </div>
-        </>
+      {/* ===== LAYER 1: Frozen frame — covers video during capture/recovery ===== */}
+      {frozenFrame && (
+        <img
+          src={frozenFrame}
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          style={{ zIndex: 5 }}
+        />
       )}
 
-      {/* Capture-area flash effect — white flash limited to the frame guide area */}
+      {/* ===== LAYER 2: Preview photo — covers everything when reviewing ===== */}
+      {previewPhoto && (
+        <img
+          src={previewPhoto.url}
+          className="absolute inset-0 w-full h-full object-contain"
+          style={{ zIndex: 10 }}
+        />
+      )}
+
+      {/* ===== LAYER 3: Error overlay ===== */}
+      {error && !previewPhoto && (
+        <div className="absolute inset-0 flex items-center justify-center p-6 text-center bg-black/80" style={{ zIndex: 25 }}>
+          <div className="space-y-4">
+            <p className="text-on-surface-variant text-sm">{error}</p>
+            <button
+              onClick={startCamera}
+              className="px-4 py-2 bg-primary text-on-primary rounded-full text-xs font-bold"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ===== LAYER 4: Capture Frame Guide ===== */}
+      {!previewPhoto && (
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center" style={{ zIndex: 8 }}>
+          <div
+            className="relative rounded-md"
+            style={{
+              aspectRatio: getFrameAspectRatio(),
+              width: `min(100vw, calc(100vh * ${getFrameRatioValue()}))`,
+              boxShadow: '0 0 0 200vmax rgba(180, 180, 195, 0.35)',
+              border: '1.5px solid rgba(255, 255, 255, 0.35)',
+            }}
+          >
+            <div className="absolute inset-0 pointer-events-none opacity-30 rounded-md overflow-hidden">
+              <div className="absolute top-1/3 left-0 grid-line-h"></div>
+              <div className="absolute top-2/3 left-0 grid-line-h"></div>
+              <div className="absolute left-1/3 top-0 grid-line-v"></div>
+              <div className="absolute left-2/3 top-0 grid-line-v"></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== LAYER 5: Capture-area flash ===== */}
       {captureFlash && (
-        <div className="absolute inset-0 z-15 flex items-center justify-center pointer-events-none">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 12 }}>
           <div
             className="rounded-md bg-white/90"
             style={{
@@ -456,11 +438,10 @@ export default function CameraView({
         </div>
       )}
 
-      {/* ===== OVERLAID CONTROLS ===== */}
+      {/* ===== OVERLAID CONTROLS (z-20+) ===== */}
 
       {/* Top Bar Overlay */}
-      <header className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 h-14">
-        {/* Gradient backdrop for readability */}
+      <header className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 h-14" style={{ zIndex: 20 }}>
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
 
         <button
@@ -499,12 +480,11 @@ export default function CameraView({
         )}
       </header>
 
-      {/* Zoom Controls Overlay — only show when not in preview mode */}
+      {/* Zoom Controls Overlay */}
       {!previewPhoto && (
-        <div className="absolute left-0 right-0 z-20 flex flex-col items-center gap-3"
-          style={{ bottom: '120px' }}
+        <div className="absolute left-0 right-0 flex flex-col items-center gap-3"
+          style={{ zIndex: 20, bottom: '120px' }}
         >
-          {/* Zoom Slider */}
           <div className="w-full max-w-[260px] px-4">
             <div className="flex justify-between items-center mb-1.5">
               <span className="font-mono text-[9px] text-white/50 uppercase">.5x</span>
@@ -525,7 +505,6 @@ export default function CameraView({
             />
           </div>
 
-          {/* Zoom Presets */}
           <div className="flex items-center gap-3 bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
             {zoomPresets.map((preset) => (
               <button
@@ -546,14 +525,11 @@ export default function CameraView({
       )}
 
       {/* Bottom Action Bar Overlay */}
-      <footer className="absolute bottom-0 left-0 right-0 z-20 pb-6 pt-8">
-        {/* Gradient backdrop for readability */}
+      <footer className="absolute bottom-0 left-0 right-0 pb-6 pt-8" style={{ zIndex: 20 }}>
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent pointer-events-none" />
 
         {!previewPhoto ? (
-          /* Live Camera State */
           <div className="relative flex justify-between items-center px-8">
-            {/* Photo Counter / Gallery */}
             <div className="flex flex-col items-center gap-1 group cursor-pointer w-14">
               <div className="relative w-12 h-12 rounded-xl bg-white/15 backdrop-blur-md border border-white/15 flex items-center justify-center overflow-hidden">
                 {lastPhotoUrl ? (
@@ -569,7 +545,6 @@ export default function CameraView({
               </div>
             </div>
 
-            {/* Shutter Button */}
             <div className="relative flex items-center justify-center">
               <div className="absolute inset-0 bg-white/10 blur-xl rounded-full scale-150" />
               <button
@@ -583,7 +558,6 @@ export default function CameraView({
               </button>
             </div>
 
-            {/* Process / Next Button */}
             <div className="w-12 flex justify-end">
               <button
                 onClick={onProcess}
@@ -600,7 +574,6 @@ export default function CameraView({
             </div>
           </div>
         ) : (
-          /* Preview State — Keep / Re-take / Delete */
           <div className="relative w-full max-w-sm mx-auto">
             <div className="flex justify-between items-center px-6">
               <button
