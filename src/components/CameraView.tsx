@@ -47,6 +47,7 @@ export default function CameraView({
   const [isProcessing, setIsProcessing] = useState(false);
   const [frozenFrame, setFrozenFrame] = useState<string | null>(null);
   const [captureFlash, setCaptureFlash] = useState(false);
+  const [hasPlayedOnce, setHasPlayedOnce] = useState(false); // hide video until first frame
 
   // Register hardware back button handler — dismiss preview if showing
   useEffect(() => {
@@ -357,13 +358,14 @@ export default function CameraView({
         playsInline
         muted
         onPlaying={() => {
-          // Video stream has recovered from ImageCapture interruption.
-          // Safe to remove frozen frame now — user will see live feed.
+          // First play or stream recovery — safe to show video and clear frozen frame
+          if (!hasPlayedOnce) setHasPlayedOnce(true);
           setFrozenFrame(null);
         }}
         className={cn(
           "absolute inset-0 w-full h-full object-cover transition-transform duration-300",
-          facingMode === 'user' && "-scale-x-100"
+          facingMode === 'user' && "-scale-x-100",
+          !hasPlayedOnce && "opacity-0" // hide until first frame to prevent play-icon poster
         )}
         style={{ transform: `${facingMode === 'user' ? 'scaleX(-1) ' : ''}scale(${zoom})` }}
       />
