@@ -95,6 +95,25 @@ video::-webkit-media-controls-panel {
   100% { opacity: 0; }
 }
 
+/* Processing pulse ring around shutter button */
+@keyframes processing-ring-pulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+@keyframes processing-ring-outer-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.2); }
+}
+
+.animate-processing-ring {
+  animation: processing-ring-pulse 1s ease-in-out infinite;
+}
+
+.animate-processing-ring-outer {
+  animation: processing-ring-outer-pulse 1s ease-in-out infinite 0.2s;
+}
+
 @keyframes shutter-flash {
   0% { opacity: 1; }
   100% { opacity: 0; }

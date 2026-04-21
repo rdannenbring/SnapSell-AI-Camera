@@ -547,13 +547,29 @@ export default function CameraView({
 
             <div className="relative flex items-center justify-center">
               <div className="absolute inset-0 bg-white/10 blur-xl rounded-full scale-150" />
+              {/* Processing pulse ring */}
+              {isProcessing && (
+                <div className="absolute w-[72px] h-[72px] rounded-full pointer-events-none" style={{ zIndex: 9 }}>
+                  <div className="absolute inset-0 rounded-full border-[3px] border-primary/60 animate-processing-ring" />
+                  <div className="absolute inset-[-8px] rounded-full border-2 border-primary/30 animate-processing-ring-outer" />
+                </div>
+              )}
               <button
                 onClick={handleCapture}
                 disabled={!isCameraReady || isProcessing}
-                className="w-[72px] h-[72px] rounded-full border-[3px] border-white/80 bg-transparent p-1.5 transition-transform active:scale-90 duration-75 relative z-10"
+                className={cn(
+                  "w-[72px] h-[72px] rounded-full border-[3px] bg-transparent p-1.5 transition-all duration-75 relative z-10",
+                  isProcessing ? "border-primary/60 scale-90" : "border-white/80 active:scale-90"
+                )}
               >
-                <div className="w-full h-full rounded-full bg-white/90 flex items-center justify-center">
-                  <div className="w-11 h-11 rounded-full border border-white/30" />
+                <div className={cn(
+                  "w-full h-full rounded-full flex items-center justify-center transition-colors duration-200",
+                  isProcessing ? "bg-primary/20" : "bg-white/90"
+                )}>
+                  <div className={cn(
+                    "w-11 h-11 rounded-full border transition-colors duration-200",
+                    isProcessing ? "border-primary/40" : "border-white/30"
+                  )} />
                 </div>
               </button>
             </div>
