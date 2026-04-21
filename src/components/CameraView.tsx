@@ -48,12 +48,6 @@ export default function CameraView({
   const [frozenFrame, setFrozenFrame] = useState<string | null>(null);
   const [captureFlash, setCaptureFlash] = useState(false);
 
-  // Cached ImageCapture instance — avoid recreating per capture
-  const imageCaptureRef = useRef<ImageCapture | null>(null);
-
-  // Reusable canvas for frozen frame — avoid GC pressure
-  const frozenCanvasRef = useRef<HTMLCanvasElement | null>(null);
-
   // Register hardware back button handler — dismiss preview if showing
   useEffect(() => {
     if (!hardwareBackRef) return;
@@ -183,90 +177,62 @@ export default function CameraView({
     };
   };
 
-  /**
-   * Grab frozen frame using blob URL (faster than toDataURL — async, off-main-thread).
-   * Returns { url, revoke } or null. Caller must call revoke() when done.
-   */
-  const grabFrozenFrameAsync = async (): Promise<{ url: string; revoke: () => void } | null> => {
+  const grabFrozenFrame = (): string | null => {
     const video = videoRef.current;
     if (!video) return null;
-    let canvas = frozenCanvasRef.current;
-    if (!canvas) {
-      canvas = document.createElement('canvas');
-      frozenCanvasRef.current = canvas;
-    }
+    const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext('2d')!;
-    ctx.setTransform(1, 0, 0, 1, 0, 0); // reset transform
     if (facingMode === 'user') {
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
     }
     ctx.drawImage(video, 0, 0);
-
-    // toBlob is async and can run off-main-thread — much faster than toDataURL
-    const blob = await new Promise<Blob | null>(resolve => canvas!.toBlob(resolve, 'image/jpeg', 0.5));
-    if (!blob) return null;
-    const url = URL.createObjectURL(blob);
-    return { url, revoke: () => URL.revokeObjectURL(url) };
+    return canvas.toDataURL('image/jpeg', 0.7);
   };
 
   const waitForPaint = () => new Promise<void>(resolve => {
-    // flushSync already forces synchronous DOM commit — single rAF is enough
-    requestAnimationFrame(() => resolve());
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   });
-
-  const frozenFrameRevokeRef = useRef<(() => void) | null>(null);
 
   const handleCapture = async () => {
     if (!videoRef.current || !streamRef.current) return;
 
-    // 1. Grab frozen frame asynchronously (toBlob is faster than toDataURL)
-    const frozen = await grabFrozenFrameAsync();
+    // 1. Grab frozen frame BEFORE any capture starts
+    const frozen = grabFrozenFrame();
 
     // 2. Use flushSync to synchronously paint the frozen frame overlay
+    //    The video stays in the DOM (never unmounted) — just covered by the frozen frame
     if (frozen) {
-      // Revoke previous frozen frame blob URL if any
-      frozenFrameRevokeRef.current?.();
-      frozenFrameRevokeRef.current = frozen.revoke;
       flushSync(() => {
-        setFrozenFrame(frozen.url);
+        setFrozenFrame(frozen);
         setIsProcessing(true);
       });
     } else {
       setIsProcessing(true);
     }
 
-    // 3. Wait for the frozen frame to be composited (single rAF — flushSync already committed)
+    // 3. Wait for the frozen frame to be painted on screen
     await waitForPaint();
 
     // 4. Trigger the capture-area flash effect
     setCaptureFlash(true);
-
-    // Helper to clean up frozen frame
-    const cleanupFrozen = () => {
-      frozenFrameRevokeRef.current?.();
-      frozenFrameRevokeRef.current = null;
-      setFrozenFrame(null);
-    };
 
     try {
       // 5. Capture at full sensor resolution
       const track = streamRef.current.getVideoTracks()[0];
       if (track && typeof ImageCapture !== 'undefined') {
         try {
-          // Reuse cached ImageCapture instance
-          if (!imageCaptureRef.current || (imageCaptureRef.current as any).track !== track) {
-            imageCaptureRef.current = new ImageCapture(track);
-          }
-          const blob = await imageCaptureRef.current.takePhoto();
+          const imageCapture = new ImageCapture(track);
+          const blob = await imageCapture.takePhoto();
           const photo = await cropBlobToPhoto(blob);
 
           setIsProcessing(false);
           setCaptureFlash(false);
           // NOTE: Do NOT clear frozenFrame here!
           // The video's onPlaying callback will clear it once the stream recovers.
+          // This prevents the play-icon flash between capture complete and stream recovery.
           if (settings.showPreviewAfterCapture) {
             setPreviewPhoto(photo);
           } else if (retakeId) {
@@ -310,7 +276,7 @@ export default function CameraView({
       console.error('Capture failed:', err);
       setIsProcessing(false);
       setCaptureFlash(false);
-      cleanupFrozen();
+      setFrozenFrame(null);
     }
   };
 
@@ -393,8 +359,6 @@ export default function CameraView({
         onPlaying={() => {
           // Video stream has recovered from ImageCapture interruption.
           // Safe to remove frozen frame now — user will see live feed.
-          frozenFrameRevokeRef.current?.();
-          frozenFrameRevokeRef.current = null;
           setFrozenFrame(null);
         }}
         className={cn(
