@@ -351,22 +351,15 @@ export default function CameraView({
       {...(bind as any)()}
       className="relative h-full w-full bg-black overflow-hidden font-sans touch-none"
     >
-      {/* Shutter flash overlay — black blink on capture */}
-      {shutterFlash && (
-        <div
-          className="absolute inset-0 z-30 bg-black pointer-events-none"
-          style={{ animation: 'shutter-flash 200ms ease-out forwards' }}
-          onAnimationEnd={() => setShutterFlash(false)}
-        />
-      )}
-
-      {/* Frozen frame overlay — prevents black screen during ImageCapture processing */}
-      {frozenFrame && !previewPhoto && (
-        <img src={frozenFrame} className="absolute inset-0 w-full h-full object-cover z-15 pointer-events-none" />
-      )}
-
-      {/* Full-screen Video Feed */}
-      {!previewPhoto ? (
+      {/* Three-state rendering: preview photo > frozen frame > live video */}
+      {previewPhoto ? (
+        /* State 1: Show captured photo preview */
+        <img src={previewPhoto.url} className="absolute inset-0 w-full h-full object-contain" />
+      ) : frozenFrame ? (
+        /* State 2: Frozen frame during capture processing — hides video to prevent play-button flash */
+        <img src={frozenFrame} className="absolute inset-0 w-full h-full object-cover" />
+      ) : (
+        /* State 3: Live camera feed */
         <>
           <video
             ref={videoRef}
@@ -414,8 +407,6 @@ export default function CameraView({
             </div>
           </div>
         </>
-      ) : (
-        <img src={previewPhoto.url} className="absolute inset-0 w-full h-full object-contain" />
       )}
 
       {/* ===== OVERLAID CONTROLS ===== */}
