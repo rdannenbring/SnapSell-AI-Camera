@@ -11,7 +11,7 @@ let aiClient: GoogleGenAI | null = null;
 
 /** Get the build-time default API key (from .env or fallback) */
 function getDefaultApiKey() {
-  return import.meta.env.VITE_GEMINI_API_KEY || '';
+  return process.env.GEMINI_API_KEY || '';
 }
 
 /** Get the effective API key: runtime override > build-time default */

@@ -21,7 +21,7 @@ export default function SettingsView({ settings, onUpdateSettings, onClose }: Se
   const [showApiKey, setShowApiKey] = useState(false);
 
   // Build-time default key (from .env), obscured for display
-  const buildTimeKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+  const buildTimeKey = process.env.GEMINI_API_KEY || '';
   const buildTimeKeyObscured = buildTimeKey ? obscureApiKey(buildTimeKey) : '';
 
   // Determine what to show in the API key field:
