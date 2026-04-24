@@ -351,32 +351,54 @@ export default function CameraView({
       {...(bind as any)()}
       className="relative h-full w-full bg-black overflow-hidden font-sans touch-none"
     >
-      {/* ===== LAYER 0: Video feed — ALWAYS in DOM, never unmounted ===== */}
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        onPlaying={() => {
-          // First play or stream recovery — safe to show video and clear frozen frame
-          if (!hasPlayedOnce) setHasPlayedOnce(true);
-          setFrozenFrame(null);
+      {/* ===== LAYER 0: Video feed — clipped to capture frame, ALWAYS in DOM ===== */}
+      <div
+        className="absolute overflow-hidden"
+        style={{
+          aspectRatio: getFrameAspectRatio(),
+          width: `min(100vw, calc(100vh * ${getFrameRatioValue()}))`,
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
         }}
-        className={cn(
-          "absolute inset-0 w-full h-full object-cover transition-transform duration-300",
-          facingMode === 'user' && "-scale-x-100",
-          !hasPlayedOnce && "opacity-0" // hide until first frame to prevent play-icon poster
-        )}
-        style={{ transform: `${facingMode === 'user' ? 'scaleX(-1) ' : ''}scale(${zoom})` }}
-      />
-
-      {/* ===== LAYER 1: Frozen frame — covers video during capture/recovery ===== */}
-      {frozenFrame && (
-        <img
-          src={frozenFrame}
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-          style={{ zIndex: 5 }}
+      >
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          onPlaying={() => {
+            // First play or stream recovery — safe to show video and clear frozen frame
+            if (!hasPlayedOnce) setHasPlayedOnce(true);
+            setFrozenFrame(null);
+          }}
+          className={cn(
+            "absolute inset-0 w-full h-full object-cover transition-transform duration-300",
+            facingMode === 'user' && "-scale-x-100",
+            !hasPlayedOnce && "opacity-0"
+          )}
+          style={{ transform: `${facingMode === 'user' ? 'scaleX(-1) ' : ''}scale(${zoom})` }}
         />
+      </div>
+
+      {/* ===== LAYER 1: Frozen frame — clipped to capture frame, covers video during capture/recovery ===== */}
+      {frozenFrame && (
+        <div
+          className="absolute overflow-hidden pointer-events-none"
+          style={{
+            aspectRatio: getFrameAspectRatio(),
+            width: `min(100vw, calc(100vh * ${getFrameRatioValue()}))`,
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 5,
+          }}
+        >
+          <img
+            src={frozenFrame}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        </div>
       )}
 
       {/* ===== LAYER 2: Preview photo — covers everything when reviewing ===== */}
@@ -411,7 +433,6 @@ export default function CameraView({
             style={{
               aspectRatio: getFrameAspectRatio(),
               width: `min(100vw, calc(100vh * ${getFrameRatioValue()}))`,
-              boxShadow: '0 0 0 200vmax rgba(180, 180, 195, 0.35)',
               border: '1.5px solid rgba(255, 255, 255, 0.35)',
             }}
           >
