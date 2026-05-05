@@ -4,8 +4,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
-import android.util.Rational
-import android.view.Surface
 import androidx.exifinterface.media.ExifInterface
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -35,7 +33,7 @@ data class CaptureResult(
 class CameraManager(
     private val context: Context,
     private val lifecycleOwner: LifecycleOwner,
-    private val previewView: PreviewView
+    val previewView: PreviewView
 ) {
     private var cameraProvider: ProcessCameraProvider? = null
     private var camera: Camera? = null
@@ -83,32 +81,17 @@ class CameraManager(
     private fun rebuildUseCases() {
         val provider = cameraProvider ?: return
 
-        // ViewPort rational in display (portrait) coordinates: width / height
-        val rational = when (aspectRatio) {
-            AspectRatioMode.RATIO_1_1 -> Rational(1, 1)
-            AspectRatioMode.RATIO_4_3 -> Rational(3, 4)
-            AspectRatioMode.RATIO_16_9 -> Rational(9, 16)
-        }
-
-        // Apply the same crop rect to both preview and capture so they match exactly
-        val displayRotation = previewView.display?.rotation ?: Surface.ROTATION_0
-        val viewport = ViewPort.Builder(rational, displayRotation).build()
-
-        // Rebuild preview — no target ratio needed; ViewPort controls the crop
+        // Preview at sensor-native aspect ratio (usually 4:3) — no ViewPort, no target ratio.
+        // The Compose layout constrains the PreviewView to the target aspect ratio,
+        // and FILL_CENTER center-crops identically to our software crop below.
         preview = Preview.Builder()
             .build()
             .also { it.setSurfaceProvider(previewView.surfaceProvider) }
 
-        // Rebuild image capture at highest quality — ViewPort will crop the output
+        // Capture at max quality — we crop in software to guarantee an exact match with the preview
         imageCapture = ImageCapture.Builder()
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
             .setJpegQuality(95)
-            .build()
-
-        val useCaseGroup = UseCaseGroup.Builder()
-            .addUseCase(preview!!)
-            .addUseCase(imageCapture!!)
-            .setViewPort(viewport)
             .build()
 
         provider.unbindAll()
@@ -118,7 +101,7 @@ class CameraManager(
             .build()
 
         try {
-            camera = provider.bindToLifecycle(lifecycleOwner, cameraSelector, useCaseGroup)
+            camera = provider.bindToLifecycle(lifecycleOwner, cameraSelector, preview!!, imageCapture!!)
             camera?.cameraControl?.setLinearZoom(linearZoomFromScale(currentZoom))
         } catch (e: Exception) {
             // Handle error
@@ -126,15 +109,13 @@ class CameraManager(
     }
 
     /**
-     * Capture a photo at full sensor resolution, cropped to the current aspect ratio.
-     * Returns a temp file with the captured image.
+     * Fast capture — saves raw JPEG from sensor with no post-processing.
+     * Use [processPhoto] later to apply rotation, mirror, and crop.
      */
-    suspend fun capturePhoto(outputDir: File): CaptureResult {
+    suspend fun captureRaw(outputDir: File): CaptureResult {
         val capture = imageCapture ?: throw IllegalStateException("Camera not initialized")
 
         val outputFile = File(outputDir, "capture_${System.currentTimeMillis()}.jpg")
-
-        // Capture at full sensor resolution
         val outputOptions = ImageCapture.OutputFileOptions.Builder(outputFile).build()
 
         suspendCoroutine { cont ->
@@ -152,27 +133,49 @@ class CameraManager(
             )
         }
 
-        // Decode with EXIF rotation applied — ViewPort already crops to the target aspect ratio
-        val decodedBitmap = decodeWithRotation(outputFile.absolutePath)
+        // Quick size read from BitmapFactory.Options (does not decode pixels)
+        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(outputFile.absolutePath, options)
+
+        return CaptureResult(
+            file = outputFile,
+            width = options.outWidth,
+            height = options.outHeight
+        )
+    }
+
+    /**
+     * Post-process a raw capture: apply EXIF rotation, front-camera mirror, and aspect-ratio crop.
+     * Overwrites the file in place.
+     */
+    fun processPhoto(file: File, isFrontCamera: Boolean, ratio: AspectRatioMode) {
+        // Decode with EXIF rotation applied
+        val decodedBitmap = decodeWithRotation(file.absolutePath)
 
         // Mirror if front camera
-        val finalBitmap = if (lensFacing == CameraSelector.LENS_FACING_FRONT) {
+        val mirroredBitmap = if (isFrontCamera) {
             mirrorBitmap(decodedBitmap)
         } else {
             decodedBitmap
         }
 
+        // Software crop to exact target aspect ratio
+        val finalBitmap = cropToAspectRatio(mirroredBitmap, ratio)
+
         // Write back to file
         val outputStream = ByteArrayOutputStream()
         finalBitmap.compress(Bitmap.CompressFormat.JPEG, 95, outputStream)
-        outputFile.writeBytes(outputStream.toByteArray())
+        file.writeBytes(outputStream.toByteArray())
 
-        return CaptureResult(
-            file = outputFile,
-            width = finalBitmap.width,
-            height = finalBitmap.height
-        )
+        // Recycle bitmaps to free memory
+        if (decodedBitmap !== mirroredBitmap) decodedBitmap.recycle()
+        if (mirroredBitmap !== finalBitmap) mirroredBitmap.recycle()
+        finalBitmap.recycle()
     }
+
+    /** Convenience: returns current state for metadata tracking */
+    fun currentLensFacing(): Int = lensFacing
+    fun currentAspectRatio(): AspectRatioMode = aspectRatio
 
     private fun cropToAspectRatio(bitmap: Bitmap, ratio: AspectRatioMode): Bitmap {
         val srcW = bitmap.width

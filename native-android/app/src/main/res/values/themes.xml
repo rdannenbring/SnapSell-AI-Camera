@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.SnapSell" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <!-- Accent color used by uCrop active state -->
+        <item name="colorAccent">#FF69F6B8</item>
+    </style>
+
+    <style name="Theme.SnapSell.UCrop" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:statusBarColor">@android:color/black</item>
+        <item name="android:navigationBarColor">@android:color/black</item>
+        <item name="android:windowBackground">@android:color/black</item>
+        <!-- Accent / active color -->
+        <item name="colorAccent">#FF69F6B8</item>
+        <item name="colorControlActivated">#FF69F6B8</item>
+        <item name="android:colorControlActivated">#FF69F6B8</item>
+        <!-- White icons and text so all UCrop controls are visible on black background -->
+        <item name="android:textColorPrimary">@android:color/white</item>
+        <item name="android:textColorSecondary">@android:color/white</item>
+        <item name="colorControlNormal">@android:color/white</item>
+        <item name="android:colorControlNormal">@android:color/white</item>
+        <item name="actionMenuTextColor">@android:color/white</item>
+        <item name="android:actionMenuTextColor">@android:color/white</item>
+    </style>
+
+    <!-- Override uCrop default colors so inactive icons are visible on dark background -->
+    <color name="ucrop_color_widget">#FFFFFFFF</color>
+    <color name="ucrop_color_widget_active">#FFFFFFFF</color>
+    <color name="ucrop_color_widget_text">#FF69F6B8</color>
+    <color name="ucrop_color_inactive_controls_color">#B3FFFFFF</color>
+    <color name="ucrop_color_inactive_aspect_ratio">#B3FFFFFF</color>
+    <color name="ucrop_color_active_controls_color">#FF69F6B8</color>
+    <color name="ucrop_color_active_aspect_ratio">#FF69F6B8</color>
+    <color name="ucrop_color_widget_background">#FF12161C</color>
+    <color name="ucrop_color_toolbar">#FF12161C</color>
+    <color name="ucrop_color_toolbar_widget">#FFFFFFFF</color>
+
+    <!-- Rotate/Scale wheel tick color — default is dim gray which is invisible
+         on our dark background. Brighten so ticks are visible. -->
+    <color name="ucrop_color_progress_wheel_line">#FFB0B0B0</color>
+    <color name="ucrop_color_scale_wheel_line">#FFB0B0B0</color>
+</resources>

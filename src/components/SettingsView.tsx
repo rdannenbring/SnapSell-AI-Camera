@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
-import { X, Info, FolderOpen, Layout, Eye, Camera, Key, EyeOff, Eye as EyeIcon, Image, Gauge } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { X, Info, FolderOpen, Layout, Eye, Camera, Key, EyeOff, Eye as EyeIcon, Image, Gauge, Sparkles, RefreshCw } from 'lucide-react';
 import { AppSettings, AspectRatio } from '../types';
-import { obscureApiKey, isObscuredKey } from '../services/aiService';
+import { obscureApiKey, isObscuredKey, listGeminiModels, DEFAULT_IMAGE_EDIT_MODEL, DEFAULT_NAMING_MODEL, GeminiModelInfo } from '../services/aiService';
 import { cn } from '../utils';
 
 interface SettingsViewProps {
@@ -19,6 +19,9 @@ export default function SettingsView({ settings, onUpdateSettings, onClose }: Se
   const [localSettings, setLocalSettings] = useState<AppSettings>(settings);
   const [pickStatus, setPickStatus] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
+  const [availableModels, setAvailableModels] = useState<GeminiModelInfo[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [modelsError, setModelsError] = useState<string | null>(null);
 
   // Build-time default key (from .env), obscured for display
   const buildTimeKey = process.env.GEMINI_API_KEY || '';
@@ -62,8 +65,10 @@ export default function SettingsView({ settings, onUpdateSettings, onClose }: Se
       // User cleared it — revert to build-time default
       e.target.value = buildTimeKeyObscured;
       updateSetting('geminiApiKey', undefined);
+      refreshModels(buildTimeKey);
     } else if (value && !isObscuredKey(value)) {
       handleApiKeyChange(value);
+      refreshModels(value);
     }
     setShowApiKey(false);
   };
@@ -73,6 +78,45 @@ export default function SettingsView({ settings, onUpdateSettings, onClose }: Se
     setLocalSettings(updated);
     onUpdateSettings(updated);
   };
+
+  const getEffectiveApiKey = () => localSettings.geminiApiKey || buildTimeKey;
+
+  const refreshModels = async (apiKeyOverride?: string) => {
+    const key = apiKeyOverride ?? getEffectiveApiKey();
+    if (!key) {
+      setAvailableModels([]);
+      setModelsError('Enter an API key to load models');
+      return;
+    }
+    setIsLoadingModels(true);
+    setModelsError(null);
+    try {
+      const models = await listGeminiModels(key);
+      setAvailableModels(models);
+
+      const modelNames = new Set(models.map(m => m.name));
+      const editModel = localSettings.geminiImageEditModel || DEFAULT_IMAGE_EDIT_MODEL;
+      const namingModel = localSettings.geminiNamingModel || DEFAULT_NAMING_MODEL;
+
+      if (!modelNames.has(editModel)) {
+        updateSetting('geminiImageEditModel', models[0]?.name || DEFAULT_IMAGE_EDIT_MODEL);
+      }
+      if (!modelNames.has(namingModel)) {
+        updateSetting('geminiNamingModel', models[0]?.name || DEFAULT_NAMING_MODEL);
+      }
+    } catch (err) {
+      console.error('Failed to load Gemini models:', err);
+      setModelsError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsLoadingModels(false);
+    }
+  };
+
+  useEffect(() => {
+    const key = getEffectiveApiKey();
+    if (key) refreshModels(key);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handlePickFolder = async () => {
     try {
@@ -394,6 +438,113 @@ export default function SettingsView({ settings, onUpdateSettings, onClose }: Se
                   ⚠ No API key configured — AI features unavailable
                 </p>
               )}
+
+              <div className="mt-4 bg-surface-lowest rounded-xl border border-outline-variant/20 p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-mono text-on-surface-variant">Gemini Models</p>
+                  <button
+                    type="button"
+                    onClick={() => refreshModels()}
+                    disabled={isLoadingModels || !getEffectiveApiKey()}
+                    className="p-1.5 rounded-full bg-surface-highest border border-outline-variant/20 text-on-surface-variant disabled:opacity-40"
+                    title="Refresh model list"
+                  >
+                    <RefreshCw size={12} className={cn(isLoadingModels && 'animate-spin')} />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-on-surface text-sm">Use same model for editing + naming</p>
+                    <p className="text-[10px] text-on-surface-variant">Disable to pick separate models</p>
+                  </div>
+                  <button
+                    onClick={() => updateSetting('useSameModelForNamingAndEditing', !localSettings.useSameModelForNamingAndEditing)}
+                    className={cn(
+                      "w-12 h-6 rounded-full relative transition-colors",
+                      localSettings.useSameModelForNamingAndEditing ? "bg-primary" : "bg-surface-highest border border-outline-variant/30"
+                    )}
+                  >
+                    <span className={cn(
+                      "absolute top-1 w-4 h-4 rounded-full shadow-sm transition-all",
+                      localSettings.useSameModelForNamingAndEditing
+                        ? "right-1 bg-on-primary-container"
+                        : "left-1 bg-on-surface-variant"
+                    )} />
+                  </button>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-mono uppercase text-on-surface-variant">Image editing model</label>
+                  <select
+                    value={localSettings.geminiImageEditModel || DEFAULT_IMAGE_EDIT_MODEL}
+                    onChange={(e) => {
+                      const selected = e.target.value;
+                      updateSetting('geminiImageEditModel', selected);
+                      if (localSettings.useSameModelForNamingAndEditing) {
+                        updateSetting('geminiNamingModel', selected);
+                      }
+                    }}
+                    className="mt-1 w-full bg-surface-highest border border-outline-variant/20 rounded-lg p-2 text-xs font-mono"
+                    disabled={isLoadingModels || availableModels.length === 0}
+                  >
+                    {availableModels.length === 0 ? (
+                      <option value={DEFAULT_IMAGE_EDIT_MODEL}>{DEFAULT_IMAGE_EDIT_MODEL}</option>
+                    ) : availableModels.map((m) => (
+                      <option key={m.name} value={m.name}>{m.displayName ? `${m.displayName} (${m.name})` : m.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {!localSettings.useSameModelForNamingAndEditing && (
+                  <div>
+                    <label className="text-[10px] font-mono uppercase text-on-surface-variant">Filename naming model</label>
+                    <select
+                      value={localSettings.geminiNamingModel || DEFAULT_NAMING_MODEL}
+                      onChange={(e) => updateSetting('geminiNamingModel', e.target.value)}
+                      className="mt-1 w-full bg-surface-highest border border-outline-variant/20 rounded-lg p-2 text-xs font-mono"
+                      disabled={isLoadingModels || availableModels.length === 0}
+                    >
+                      {availableModels.length === 0 ? (
+                        <option value={DEFAULT_NAMING_MODEL}>{DEFAULT_NAMING_MODEL}</option>
+                      ) : availableModels.map((m) => (
+                        <option key={m.name} value={m.name}>{m.displayName ? `${m.displayName} (${m.name})` : m.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {modelsError && (
+                  <p className="text-[10px] font-mono text-error/70">{modelsError}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="h-px bg-outline-variant/10 mx-5" />
+
+            {/* Auto-Generate Filename Toggle */}
+            <div className="flex items-center justify-between p-5 hover:bg-surface-high transition-colors">
+              <div className="flex items-center gap-4">
+                <Sparkles size={22} className="text-primary-dim" />
+                <div>
+                  <p className="font-semibold text-on-surface">Auto-Generate Filename</p>
+                  <p className="text-xs text-on-surface-variant">Use AI to suggest item name when saving</p>
+                </div>
+              </div>
+              <button
+                onClick={() => updateSetting('autoGenerateFilename', !localSettings.autoGenerateFilename)}
+                className={cn(
+                  "w-12 h-6 rounded-full relative transition-colors",
+                  localSettings.autoGenerateFilename ? "bg-primary" : "bg-surface-highest border border-outline-variant/30"
+                )}
+              >
+                <span className={cn(
+                  "absolute top-1 w-4 h-4 rounded-full shadow-sm transition-all",
+                  localSettings.autoGenerateFilename
+                    ? "right-1 bg-on-primary-container"
+                    : "left-1 bg-on-surface-variant"
+                )} />
+              </button>
             </div>
           </div>
         </section>

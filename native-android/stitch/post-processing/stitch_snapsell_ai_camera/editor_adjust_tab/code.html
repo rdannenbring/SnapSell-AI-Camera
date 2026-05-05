@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-tint": "#69f6b8",
+                      "tertiary-container": "#a589f8",
+                      "secondary-fixed-dim": "#9fc6ff",
+                      "primary": "#69f6b8",
+                      "surface-container": "#191919",
+                      "on-primary-fixed": "#00452d",
+                      "error": "#ff716c",
+                      "outline": "#757575",
+                      "surface-variant": "#262626",
+                      "surface": "#0e0e0e",
+                      "on-tertiary": "#31067e",
+                      "inverse-primary": "#006d4a",
+                      "inverse-surface": "#f9f9f9",
+                      "primary-fixed": "#69f6b8",
+                      "outline-variant": "#484848",
+                      "on-primary-fixed-variant": "#006544",
+                      "on-surface": "#ffffff",
+                      "secondary": "#64a8fe",
+                      "primary-container": "#06b77f",
+                      "tertiary-fixed": "#baa3ff",
+                      "error-dim": "#d7383b",
+                      "on-tertiary-container": "#230062",
+                      "on-secondary": "#00284e",
+                      "on-tertiary-fixed": "#1d0054",
+                      "secondary-container": "#0060ac",
+                      "primary-dim": "#58e7ab",
+                      "tertiary-fixed-dim": "#ad92ff",
+                      "inverse-on-surface": "#555555",
+                      "surface-dim": "#0e0e0e",
+                      "on-secondary-container": "#f6f7ff",
+                      "primary-fixed-dim": "#58e7ab",
+                      "on-error-container": "#ffa8a3",
+                      "surface-bright": "#2c2c2c",
+                      "on-background": "#ffffff",
+                      "on-primary-container": "#002919",
+                      "on-primary": "#005a3c",
+                      "secondary-fixed": "#b7d3ff",
+                      "on-error": "#490006",
+                      "surface-container-lowest": "#000000",
+                      "surface-container-highest": "#262626",
+                      "tertiary": "#b299ff",
+                      "background": "#0e0e0e",
+                      "tertiary-dim": "#a88cfb",
+                      "surface-container-low": "#131313",
+                      "on-secondary-fixed-variant": "#005294",
+                      "error-container": "#9f0519",
+                      "surface-container-high": "#1f1f1f",
+                      "secondary-dim": "#5ba0f5",
+                      "on-tertiary-fixed-variant": "#41208e",
+                      "on-surface-variant": "#ababab",
+                      "on-secondary-fixed": "#003563"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "fontFamily": {
+                      "headline": ["Inter"],
+                      "display": ["Inter"],
+                      "body": ["Inter"],
+                      "label": ["Inter"],
+                      "mono": ["JetBrains Mono"]
+              }
+            },
+          }
+        }
+      </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+        .glass-panel {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+      </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-container-lowest text-on-surface font-body overflow-hidden h-screen flex flex-col">
+<!-- TopAppBar (JSON Mapping) -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 py-4 bg-[#000000]/80 backdrop-blur-md">
+<div class="flex items-center gap-4 flex-1">
+<button class="text-on-surface hover:bg-surface-variant p-2 rounded-full transition-all active:scale-95 duration-200">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+<div class="flex items-center gap-2 bg-surface-container rounded-full px-4 py-1.5 flex-1 max-w-xs transition-all border border-outline-variant/10">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="auto_awesome" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<input class="bg-transparent border-none focus:ring-0 text-on-surface font-mono text-sm placeholder:text-outline/50 w-full" placeholder="Enter item name..." type="text" value="New Shoot_01"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="px-6 py-2 rounded-full bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold text-sm tracking-tight active:scale-95 duration-200">
+                Finish
+            </button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 mt-16 mb-44 relative flex flex-col items-center justify-center p-4">
+<!-- Main Product Frame -->
+<div class="relative w-full max-w-lg aspect-[4/5] bg-surface-container-low rounded-2xl overflow-hidden shadow-2xl flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="Professional studio shot of a vibrant red sneaker against a deep black background with precision rim lighting and realistic textures" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCR_KoMjQjT9f6Ivi84CP80mDLurjYTJKUCxnK5cDlNfcQgWgSUcJLpGz3PKpw8_YoaOxetH6nJUFJQzgmxVXA4-072UBeq5-bILMGhcXWWO15fMA1uV9QnpINZJ1Owzji2sPAqSza39qmqmL-R87xWS8wSI2b0vS8nNtPL4Hcn7T5E4HZu8lsZU9NcxfLdJyFBlbQ9gdtR50u6yNA2YdLv8f1b4rBZ5PC9eVaxUd70cZ448r9PkvlSA2nZ3dRytVhn8kMtwpI_wM55"/>
+<!-- AI Confidence HUD -->
+<div class="absolute bottom-6 left-6 right-6 glass-panel rounded-xl p-3 border border-outline-variant/10">
+<div class="flex items-center justify-between mb-2">
+<span class="font-mono text-[10px] text-primary uppercase tracking-widest font-bold">Object Detection Accuracy</span>
+<span class="font-mono text-[10px] text-primary">98.4%</span>
+</div>
+<div class="h-1 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[98.4%]"></div>
+</div>
+</div>
+</div>
+<!-- Thumbnail Strip -->
+<div class="w-full max-w-lg mt-6 overflow-x-auto no-scrollbar">
+<div class="flex gap-3 px-2">
+<div class="w-16 h-16 rounded-lg ring-2 ring-primary ring-offset-2 ring-offset-surface-container-lowest overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="Thumbnail of red sneaker main view" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBqlsPlcM-6hnvpk7yq01QZfxIw5k6QKtLu6lvvoGFPgNm1mikYZwSd4AwrCXymlKxI3KQdb4ih4q7NExkq_V4dt9SKQxpR0Jz5M7uvFhy4K9Tm4KNIKwKkO4pz8EV-F1U1qgkM3gjic67Ur5nSaGnELauPAYUUEOOvuQDWxhsrshQW818NShBHGI4K7Y1FYoFde3_c4k-ceuyMb5LL2yZznby8GFKsf2-bcNJKrXSOjKVKqRg3mVZ18id6FoczVUy8YHghxXMNxbud"/>
+</div>
+<div class="w-16 h-16 rounded-lg bg-surface-container overflow-hidden flex-shrink-0 opacity-50 hover:opacity-100 transition-opacity">
+<img class="w-full h-full object-cover" data-alt="Thumbnail of green sneaker alternative view" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAYIq8TUbpL6OUYCk-RkgbNdsVX1VD_qCQHzG20-akK7hDOTkKIkzSIbEkA9agudVMzSeA3fn0wEeehZPbpL80b-QNCVl-OFF8cjX_ewd4N8DnAo1B0rSc80NOMzv-u-HWuuXsI-I2cs4bUq41vZ6GYFehL-gs5yzFM89e75G2_Ubf2C6bh9Cbc9XojWogrEekRuBpcj-ibrislKwrJ4vlkUy0-lonVXvA5t4w3sMDUZ5lTtf4OEX1HTXu99h0PDtbq09vULDVk9n0j"/>
+</div>
+<div class="w-16 h-16 rounded-lg bg-surface-container overflow-hidden flex-shrink-0 opacity-50 hover:opacity-100 transition-opacity">
+<img class="w-full h-full object-cover" data-alt="Thumbnail of brown sneaker side profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAjkpldyaVKnJq6I3SH7_OnT2_NzgjpXZjf37TpCfGnuW0cNtnkKlBxw237bmugNhLOm9w4d-BGl6ZmeiZWOCWNHRZmT50_BBo8ZRRS-1vkp3EZkiw3evcXVbNjycBwC4einS6HyhFSH8Eg5_wJ2OTsXDr9viWauTbLsLE_I1m0jO8S8ySxNlv3i_Wrrgll9JxNfI2rEjENR3z33VZCmI_eE1CQvWow21ddcgRk1KdCf5Q-L9zRJGWGBEMYc77Dczn3ikzrJoGlqK2q"/>
+</div>
+<div class="w-16 h-16 rounded-lg bg-surface-container border-2 border-dashed border-outline-variant/30 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-outline" data-icon="add">add</span>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Editing Panel (Obsidian Lens Aesthetic) -->
+<div class="fixed bottom-0 left-0 w-full z-40">
+<!-- Adjustment Controls Panel -->
+<div class="bg-surface-container-low pt-8 pb-32 px-8 rounded-t-3xl border-t border-outline-variant/5">
+<div class="max-w-2xl mx-auto space-y-10">
+<!-- Exposure Slider -->
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<label class="font-mono text-xs text-on-surface-variant font-bold uppercase tracking-widest">Exposure</label>
+<span class="font-mono text-sm text-primary">+0.25 eV</span>
+</div>
+<div class="relative h-1.5 bg-surface-container rounded-full group cursor-pointer">
+<div class="absolute h-full bg-primary rounded-full" style="width: 62%"></div>
+<div class="absolute top-1/2 left-[62%] -translate-y-1/2 w-4 h-4 bg-on-surface rounded-full shadow-lg transition-transform active:scale-125"></div>
+</div>
+</div>
+<!-- Contrast Slider -->
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<label class="font-mono text-xs text-on-surface-variant font-bold uppercase tracking-widest">Contrast</label>
+<span class="font-mono text-sm text-primary">+12%</span>
+</div>
+<div class="relative h-1.5 bg-surface-container rounded-full group cursor-pointer">
+<div class="absolute h-full bg-primary rounded-full" style="width: 56%"></div>
+<div class="absolute top-1/2 left-[56%] -translate-y-1/2 w-4 h-4 bg-on-surface rounded-full shadow-lg transition-transform active:scale-125"></div>
+</div>
+</div>
+<!-- Apply to All Toggle -->
+<div class="flex items-center justify-between py-2 px-4 bg-surface-container/50 rounded-2xl border border-outline-variant/5">
+<span class="text-sm font-medium text-on-surface">Apply adjustments to all photos</span>
+<button class="w-12 h-6 bg-primary rounded-full relative transition-colors duration-300">
+<span class="absolute right-1 top-1 w-4 h-4 bg-on-primary rounded-full shadow-md"></span>
+</button>
+</div>
+</div>
+</div>
+<!-- BottomNavBar (JSON Mapping) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center pb-8 pt-4 px-4 bg-[#000000]/90 backdrop-blur-xl rounded-t-3xl shadow-[0_-4px_24px_rgba(16,185,129,0.08)]">
+<!-- Adjust Tab (Active) -->
+<div class="flex flex-col items-center justify-center bg-emerald-500/10 text-emerald-400 rounded-full px-6 py-2 transition-all active:scale-90 duration-150 ease-in-out">
+<span class="material-symbols-outlined text-2xl mb-1" data-icon="tune">tune</span>
+<span class="font-mono text-[10px] uppercase tracking-widest font-bold">Adjust</span>
+</div>
+<!-- AI Filters Tab -->
+<div class="flex flex-col items-center justify-center text-zinc-500 px-6 py-2 transition-all hover:text-emerald-300 active:scale-90 duration-150 ease-in-out">
+<span class="material-symbols-outlined text-2xl mb-1" data-icon="auto_awesome">auto_awesome</span>
+<span class="font-mono text-[10px] uppercase tracking-widest font-bold">AI Filters</span>
+</div>
+<!-- Edit Tab -->
+<div class="flex flex-col items-center justify-center text-zinc-500 px-6 py-2 transition-all hover:text-emerald-300 active:scale-90 duration-150 ease-in-out">
+<span class="material-symbols-outlined text-2xl mb-1" data-icon="edit_note">edit_note</span>
+<span class="font-mono text-[10px] uppercase tracking-widest font-bold">Edit</span>
+</div>
+</nav>
+</div>
+</body></html>

@@ -7,11 +7,11 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   X, Check, Crop, Sliders, Sparkles,
   Contrast, Image as ImageIcon, RotateCcw,
-  Layers, Wand2, Trash2, Save, Plus, XCircle
+  Layers, Wand2, Trash2, Save, Plus
 } from 'lucide-react';
 import { usePinch } from '@use-gesture/react';
 import { PhotoData, AppSettings, AspectRatio } from '../types';
-import { applyAIFilter, AI_PROMPTS, suggestItemName } from '../services/aiService';
+import { applyAIFilterWithModel, AI_PROMPTS, suggestItemName, DEFAULT_IMAGE_EDIT_MODEL, DEFAULT_NAMING_MODEL } from '../services/aiService';
 import { cn } from '../utils';
 
 interface EditorViewProps {
@@ -314,12 +314,22 @@ export default function EditorView({ photos, onClose, onSave, onRetake, onDelete
     try {
       if (applyToAll) {
         const updated = await Promise.all(currentPhotos.map(async (p) => {
-          const result = await applyAIFilter(p.url, prompt, settings.geminiApiKey);
+          const result = await applyAIFilterWithModel(
+            p.url,
+            prompt,
+            settings.geminiApiKey,
+            settings.geminiImageEditModel || DEFAULT_IMAGE_EDIT_MODEL,
+          );
           return { ...p, url: result, filters: { ...p.filters, aiFilter: prompt, exposure: p.filters?.exposure || 0, contrast: p.filters?.contrast || 0, scale: p.filters?.scale || 1 } };
         }));
         setCurrentPhotos(updated);
       } else {
-        const result = await applyAIFilter(currentPhoto.url, prompt, settings.geminiApiKey);
+        const result = await applyAIFilterWithModel(
+          currentPhoto.url,
+          prompt,
+          settings.geminiApiKey,
+          settings.geminiImageEditModel || DEFAULT_IMAGE_EDIT_MODEL,
+        );
         updateCurrentPhoto({
           url: result,
           filters: { ...currentPhoto.filters, aiFilter: prompt, exposure: currentPhoto.filters?.exposure || 0, contrast: currentPhoto.filters?.contrast || 0, scale: currentPhoto.filters?.scale || 1 }
@@ -351,10 +361,16 @@ export default function EditorView({ photos, onClose, onSave, onRetake, onDelete
       ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
       const croppedUrl = canvas.toDataURL('image/jpeg', settings.imageQuality / 100);
 
-      updateCurrentPhoto({
-        url: croppedUrl,
-        aspectRatio: cropAspectRatio === 'free' ? currentPhoto.aspectRatio : cropAspectRatio,
-      });
+      // Crop should only ever apply to the currently selected photo.
+      setCurrentPhotos(prev => prev.map((p, i) => (
+        i === selectedIndex
+          ? {
+              ...p,
+              url: croppedUrl,
+              aspectRatio: cropAspectRatio === 'free' ? currentPhoto.aspectRatio : cropAspectRatio,
+            }
+          : p
+      )));
 
       setCropRect({ x: 0, y: 0, w: 1, h: 1 });
       setActiveTab('adjust');
@@ -404,7 +420,27 @@ export default function EditorView({ photos, onClose, onSave, onRetake, onDelete
       });
     }));
 
-    onSave(bakedPhotos, itemName || undefined);
+    let finalName = itemName.trim();
+    if (!finalName && settings.autoGenerateFilename) {
+      try {
+        setIsProcessing(true);
+        const namingModel = settings.useSameModelForNamingAndEditing
+          ? (settings.geminiImageEditModel || DEFAULT_IMAGE_EDIT_MODEL)
+          : (settings.geminiNamingModel || DEFAULT_NAMING_MODEL);
+        const suggested = await suggestItemName(
+          bakedPhotos.map(p => p.url),
+          settings.geminiApiKey,
+          namingModel,
+        );
+        if (suggested) finalName = suggested;
+      } catch (err) {
+        console.error('Auto-generate filename failed:', err);
+      } finally {
+        setIsProcessing(false);
+      }
+    }
+
+    onSave(bakedPhotos, finalName || undefined);
   };
 
   if (!currentPhoto) return null;
@@ -510,9 +546,9 @@ export default function EditorView({ photos, onClose, onSave, onRetake, onDelete
               <div className="absolute bg-black/60" style={{ top: `${cropRect.y * 100}%`, right: 0, width: `${(1 - cropRect.x - cropRect.w) * 100}%`, height: `${cropRect.h * 100}%` }} />
             </div>
 
-            {/* Crop border — draggable for move */}
+            {/* Crop border with draggable edges and corners */}
             <div
-              className="absolute border-2 border-white cursor-move"
+              className="absolute border-2 border-white"
               style={{
                 top: `${cropRect.y * 100}%`,
                 left: `${cropRect.x * 100}%`,
@@ -521,7 +557,6 @@ export default function EditorView({ photos, onClose, onSave, onRetake, onDelete
                 zIndex: 10,
                 touchAction: 'none',
               }}
-              onPointerDown={handlePointerDown('move')}
             >
               {/* 3x3 Grid */}
               <div className="absolute w-full h-full pointer-events-none">
@@ -531,21 +566,26 @@ export default function EditorView({ photos, onClose, onSave, onRetake, onDelete
                 <div className="absolute top-2/3 left-0 right-0 h-px bg-white/30" />
               </div>
 
-              {/* Edge handles — very large touch zones extending far inward */}
-              <div className="absolute top-0 left-16 right-16 cursor-n-resize z-20"
-                   style={{ height: '25%', transform: 'translateY(-5%)' }}
+              {/* Move area */}
+              <div
+                   className="absolute inset-6 cursor-move z-10"
+                   onPointerDown={handlePointerDown('move')} />
+
+              {/* Edge handles directly on border */}
+              <div className="absolute top-0 left-8 right-8 cursor-n-resize z-20"
+                   style={{ height: '16px', transform: 'translateY(-50%)' }}
                    onPointerDown={handlePointerDown('top')} />
-              <div className="absolute bottom-0 left-16 right-16 cursor-s-resize z-20"
-                   style={{ height: '25%', transform: 'translateY(5%)' }}
+              <div className="absolute bottom-0 left-8 right-8 cursor-s-resize z-20"
+                   style={{ height: '16px', transform: 'translateY(50%)' }}
                    onPointerDown={handlePointerDown('bottom')} />
-              <div className="absolute left-0 top-16 bottom-16 cursor-w-resize z-20"
-                   style={{ width: '25%', transform: 'translateX(-5%)' }}
+              <div className="absolute left-0 top-8 bottom-8 cursor-w-resize z-20"
+                   style={{ width: '16px', transform: 'translateX(-50%)' }}
                    onPointerDown={handlePointerDown('left')} />
-              <div className="absolute right-0 top-16 bottom-16 cursor-e-resize z-20"
-                   style={{ width: '25%', transform: 'translateX(5%)' }}
+              <div className="absolute right-0 top-8 bottom-8 cursor-e-resize z-20"
+                   style={{ width: '16px', transform: 'translateX(50%)' }}
                    onPointerDown={handlePointerDown('right')} />
 
-              {/* Corner handles — huge invisible touch targets, small visible dots */}
+              {/* Corner handles */}
               {(['tl', 'tr', 'bl', 'br'] as const).map(corner => {
                 const isTop = corner.startsWith('t');
                 const isLeft = corner.endsWith('l');
@@ -554,17 +594,16 @@ export default function EditorView({ photos, onClose, onSave, onRetake, onDelete
                     key={corner}
                     className="absolute flex items-center justify-center cursor-pointer z-30"
                     style={{
-                      width: '35%',
-                      height: '35%',
+                      width: '36px',
+                      height: '36px',
                       top: isTop ? 0 : '100%',
                       left: isLeft ? 0 : '100%',
-                      transform: `${isTop ? 'translateY(-10%)' : 'translateY(-90%)'} ${isLeft ? 'translateX(-10%)' : 'translateX(-90%)'}`,
+                      transform: 'translate(-50%, -50%)',
                       touchAction: 'none',
                     }}
                     onPointerDown={handlePointerDown(corner)}
                   >
-                    <div className="w-5 h-5 bg-white rounded-full shadow-lg border-2 border-primary/60 active:scale-125 transition-transform"
-                         style={{ position: 'absolute', top: isTop ? '10%' : '90%', left: isLeft ? '10%' : '90%', transform: 'translate(-50%, -50%)' }} />
+                    <div className="w-4 h-4 bg-white rounded-full shadow-lg border-2 border-primary/60 active:scale-125 transition-transform" />
                   </div>
                 );
               })}
@@ -575,12 +614,7 @@ export default function EditorView({ photos, onClose, onSave, onRetake, onDelete
         {/* Top bar */}
         <header className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 h-14">
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
-          <button
-            onClick={handleCancelCrop}
-            className="relative p-2.5 text-white/90 hover:text-white bg-black/30 transition-colors rounded-full active:scale-95"
-          >
-            <XCircle size={22} />
-          </button>
+          <div className="w-16" />
           <nav className="relative flex items-center bg-black/40 rounded-full p-1 border border-white/10">
             {(['free', '1:1', '4:3', '16:9'] as const).map((ratio) => (
               <button
@@ -597,10 +631,15 @@ export default function EditorView({ photos, onClose, onSave, onRetake, onDelete
               </button>
             ))}
           </nav>
-          <div className="w-10" />
+          <div className="w-16" />
         </header>
 
-        {/* Bottom bar with Cancel, Reset, Apply */}
+        {/* Back gesture info — below top bar */}
+        <div className="absolute top-14 left-0 right-0 z-20 flex justify-center pointer-events-none">
+          <p className="text-white/30 text-[10px] font-mono uppercase tracking-widest bg-black/40 px-3 py-1 rounded-full">ⓘ Back gestures disabled on this screen</p>
+        </div>
+
+        {/* Bottom bar with Cancel + Apply only */}
         <footer className="absolute bottom-0 left-0 right-0 z-20 pb-6 pt-10">
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent pointer-events-none" />
           <div className="relative flex justify-center items-center gap-3 px-4">
@@ -609,15 +648,6 @@ export default function EditorView({ photos, onClose, onSave, onRetake, onDelete
               className="px-4 py-2.5 rounded-full bg-white/15 border border-white/15 text-white/80 font-mono text-xs font-bold uppercase tracking-widest active:scale-95 transition-transform"
             >
               Cancel
-            </button>
-            <button
-              onClick={() => {
-                updateCurrentPhoto({ url: currentPhoto.originalUrl });
-                setCropRect({ x: 0, y: 0, w: 1, h: 1 });
-              }}
-              className="px-4 py-2.5 rounded-full bg-white/15 border border-white/15 text-white/80 font-mono text-xs font-bold uppercase tracking-widest active:scale-95 transition-transform"
-            >
-              Reset
             </button>
             <button
               onClick={handleCrop}
@@ -635,9 +665,9 @@ export default function EditorView({ photos, onClose, onSave, onRetake, onDelete
   // ===== NORMAL EDITOR MODE — Full-screen photo with overlaid transparent controls =====
   return (
     <div className="fixed inset-0 z-50 bg-black font-sans overflow-hidden">
-      {/* Full-screen photo — fills entire screen */}
+      {/* Full-screen photo — fills entire screen with explicit black background */}
       <div
-        className="absolute inset-0 flex items-center justify-center cursor-pointer"
+        className="absolute inset-0 flex items-center justify-center cursor-pointer bg-black"
         onClick={() => setIsFullscreen(true)}
       >
         <img
@@ -645,6 +675,7 @@ export default function EditorView({ photos, onClose, onSave, onRetake, onDelete
           className="w-full h-full object-contain"
           style={{
             filter: `brightness(${100 + filters.exposure}%) contrast(${100 + filters.contrast}%)`,
+            backgroundColor: '#000',
           }}
           alt="Preview"
           draggable={false}
@@ -714,9 +745,9 @@ export default function EditorView({ photos, onClose, onSave, onRetake, onDelete
         </button>
       </div>
 
-      {/* Bottom controls — overlaid */}
+      {/* Bottom controls — overlaid with solid dark backdrop for readability */}
       <div className="absolute bottom-0 left-0 right-0 z-20" onClick={e => e.stopPropagation()}>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent pointer-events-none" />
         <div className="relative px-4 pt-8 pb-4 pointer-events-auto">
           {/* Thumbnail strip */}
           <div className="flex gap-2.5 overflow-x-auto no-scrollbar items-center mb-3">
@@ -728,7 +759,7 @@ export default function EditorView({ photos, onClose, onSave, onRetake, onDelete
                   "shrink-0 w-11 h-11 rounded-lg overflow-hidden border-2 transition-all",
                   selectedIndex === i
                     ? "border-primary p-0.5 bg-primary/20"
-                    : "border-white/15 hover:border-primary/50 opacity-50"
+                    : "border-white/25 hover:border-primary/50 opacity-60"
                 )}
               >
                 <img src={p.url} className={cn("w-full h-full object-cover", selectedIndex === i && "rounded")} />
@@ -736,26 +767,26 @@ export default function EditorView({ photos, onClose, onSave, onRetake, onDelete
             ))}
             <button
               onClick={onAddMore}
-              className="shrink-0 w-11 h-11 rounded-lg border-2 border-dashed border-white/20 flex items-center justify-center hover:border-primary/50 hover:bg-white/5 transition-all"
+              className="shrink-0 w-11 h-11 rounded-lg border-2 border-dashed border-white/30 flex items-center justify-center hover:border-primary/50 hover:bg-white/5 transition-all"
             >
-              <Plus size={14} className="text-white/40" />
+              <Plus size={14} className="text-white/60" />
             </button>
           </div>
 
           {/* Toggle + Tabs */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <span className="text-[9px] font-mono font-bold uppercase text-white/50 tracking-wider">All</span>
+              <span className="text-[9px] font-mono font-bold uppercase text-white/70 tracking-wider">All</span>
               <button
                 onClick={() => setApplyToAll(!applyToAll)}
                 className={cn(
                   "w-8 h-[18px] rounded-full relative transition-colors",
-                  applyToAll ? "bg-primary" : "bg-white/20"
+                  applyToAll ? "bg-primary" : "bg-white/30"
                 )}
               >
                 <div className={cn(
                   "absolute top-[2px] w-[14px] h-[14px] rounded-full transition-all",
-                  applyToAll ? "right-[2px] bg-on-primary" : "left-[2px] bg-white/50"
+                  applyToAll ? "right-[2px] bg-on-primary" : "left-[2px] bg-white/70"
                 )} />
               </button>
             </div>
@@ -771,7 +802,7 @@ export default function EditorView({ photos, onClose, onSave, onRetake, onDelete
                   onClick={() => setActiveTab(key)}
                   className={cn(
                     "flex flex-col items-center gap-0.5 group transition-colors",
-                    activeTab === key ? "text-primary" : "text-white/50 group-hover:text-white/80"
+                    activeTab === key ? "text-primary" : "text-white/70 group-hover:text-white"
                   )}
                 >
                   <Icon size={18} />
@@ -791,8 +822,8 @@ export default function EditorView({ photos, onClose, onSave, onRetake, onDelete
               ].map(({ label, value, display, field, ...rest }) => (
                 <div key={field} className="space-y-0.5">
                   <div className="flex justify-between items-center">
-                    <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-white/50">{label}</label>
-                    <span className="text-[11px] font-mono text-primary">{display}</span>
+                    <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-white/70">{label}</label>
+                    <span className="text-[11px] font-mono text-primary font-semibold">{display}</span>
                   </div>
                   <input
                     type="range"
@@ -800,7 +831,7 @@ export default function EditorView({ photos, onClose, onSave, onRetake, onDelete
                     onChange={(e) => updateCurrentPhoto({
                       filters: { ...filters, [field]: field === 'scale' ? parseFloat(e.target.value) : parseInt(e.target.value) }
                     })}
-                    className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer slider-obsidian"
+                    className="w-full h-1.5 bg-white/25 rounded-lg appearance-none cursor-pointer slider-obsidian"
                     {...rest}
                   />
                 </div>
@@ -819,12 +850,12 @@ export default function EditorView({ photos, onClose, onSave, onRetake, onDelete
                   key={label}
                   onClick={() => handleAIFilter(prompt)}
                   disabled={isProcessing}
-                  className="flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group disabled:opacity-50"
+                  className="flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-2xl bg-white/10 border border-white/15 hover:bg-white/15 transition-all group disabled:opacity-50"
                 >
                   <div className={`w-8 h-8 rounded-full bg-${color}-container/20 flex items-center justify-center group-hover:scale-110 transition-transform`}>
                     <Icon size={16} className={`text-${color}`} />
                   </div>
-                  <span className="font-mono text-[9px] uppercase font-bold text-white/50 tracking-tighter">{label}</span>
+                  <span className="font-mono text-[10px] uppercase font-bold text-white/80 tracking-tighter">{label}</span>
                 </button>
               ))}
             </div>

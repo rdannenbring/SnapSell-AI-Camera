@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-tertiary-fixed-variant": "#41208e",
+            "on-background": "#ffffff",
+            "primary": "#69f6b8",
+            "on-tertiary": "#31067e",
+            "on-secondary-fixed-variant": "#005294",
+            "surface-container-lowest": "#000000",
+            "on-primary-container": "#002919",
+            "inverse-primary": "#006d4a",
+            "on-primary-fixed-variant": "#006544",
+            "error": "#ff716c",
+            "surface": "#0e0e0e",
+            "secondary-container": "#0060ac",
+            "outline-variant": "#484848",
+            "on-tertiary-container": "#230062",
+            "background": "#0e0e0e",
+            "primary-fixed": "#69f6b8",
+            "on-secondary-fixed": "#003563",
+            "error-container": "#9f0519",
+            "on-secondary": "#00284e",
+            "tertiary": "#b299ff",
+            "surface-variant": "#262626",
+            "tertiary-fixed": "#baa3ff",
+            "surface-dim": "#0e0e0e",
+            "surface-container": "#191919",
+            "error-dim": "#d7383b",
+            "secondary-fixed-dim": "#9fc6ff",
+            "surface-bright": "#2c2c2c",
+            "outline": "#757575",
+            "surface-container-high": "#1f1f1f",
+            "on-error": "#490006",
+            "on-primary-fixed": "#00452d",
+            "on-secondary-container": "#f6f7ff",
+            "tertiary-fixed-dim": "#ad92ff",
+            "surface-container-highest": "#262626",
+            "primary-container": "#06b77f",
+            "secondary-dim": "#5ba0f5",
+            "primary-dim": "#58e7ab",
+            "tertiary-dim": "#a88cfb",
+            "on-surface-variant": "#ababab",
+            "tertiary-container": "#a589f8",
+            "secondary-fixed": "#b7d3ff",
+            "secondary": "#64a8fe",
+            "on-surface": "#ffffff",
+            "primary-fixed-dim": "#58e7ab",
+            "surface-tint": "#69f6b8",
+            "on-primary": "#005a3c",
+            "surface-container-low": "#131313",
+            "inverse-on-surface": "#555555",
+            "on-error-container": "#ffa8a3",
+            "on-tertiary-fixed": "#1d0054",
+            "inverse-surface": "#f9f9f9"
+          },
+          "borderRadius": {
+            "DEFAULT": "1rem",
+            "lg": "2rem",
+            "xl": "3rem",
+            "full": "9999px"
+          },
+          "fontFamily": {
+            "headline": ["Inter"],
+            "body": ["Inter"],
+            "label": ["Inter"],
+            "mono": ["JetBrains Mono"]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .grid-line-h {
+      height: 1px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.15);
+    }
+    .grid-line-v {
+      width: 1px;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.15);
+    }
+    body {
+      height: 100dvh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+  </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface font-body selection:bg-primary selection:text-on-primary">
+<!-- Top Navigation -->
+<header class="relative z-50 flex items-center justify-between px-4 h-14 shrink-0 mt-2">
+<div class="flex items-center">
+<button class="p-2 text-[#69f6b8] hover:bg-[#262626] transition-colors rounded-full active:scale-95">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+<nav class="flex items-center bg-[#131313]/80 backdrop-blur-md rounded-full p-1 border border-white/5">
+<button class="px-3 py-1 font-mono text-[10px] tracking-widest text-[#ababab] hover:text-white transition-all">1:1</button>
+<button class="px-3 py-1 font-mono text-[10px] tracking-widest text-[#69f6b8] bg-[#191919] rounded-full shadow-sm">4:3</button>
+<button class="px-3 py-1 font-mono text-[10px] tracking-widest text-[#ababab] hover:text-white transition-all">16:9</button>
+</nav>
+<div class="flex items-center">
+<button class="p-2 text-[#69f6b8] hover:bg-[#262626] transition-colors rounded-full active:scale-95">
+<span class="material-symbols-outlined" data-icon="flip_camera_ios">flip_camera_ios</span>
+</button>
+</div>
+</header>
+<!-- Main Content Area: Responsive Flex Container -->
+<main class="flex-1 flex flex-col items-center justify-center min-h-0 px-4 gap-4">
+<!-- Camera Preview: Uses min-h-0 and max-h to stay within viewport -->
+<div class="relative aspect-square w-full max-w-[min(85vw,500px)] max-h-[45vh] bg-surface-container overflow-hidden rounded-2xl shadow-2xl border border-white/5 shrink-1">
+<img class="w-full h-full object-cover grayscale-[0.2] contrast-125" data-alt="High-end fashion sneaker on a minimalist concrete pedestal" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB9QZ-isN0PU2oOq9RquRRaHw4SEa6vuqKfVrip1inJjGBP1_MyAlbscmFx8IUE2Oynz72-YKlCXZlFv7crZPu9Tuz7TxgA18wMm5tkEBUiPcmor0k_sFDhZDvJI8uVQQfuUWf0XQVLqo0SG36AAkyB_hDNO0ziJ2IItoa2yBrNnI78AUpLlBpwkipD8sKb2dzEsyqkpO22__Pxrcw2XANZcke68xt3zB6W_8zhpGfW2-flO_BMC1ljZIamnG2vxWLDOEBo0ssna6gs"/>
+<!-- 3x3 Grid Overlay -->
+<div class="absolute inset-0 pointer-events-none opacity-40">
+<div class="absolute top-1/3 left-0 grid-line-h"></div>
+<div class="absolute top-2/3 left-0 grid-line-h"></div>
+<div class="absolute left-1/3 top-0 grid-line-v"></div>
+<div class="absolute left-2/3 top-0 grid-line-v"></div>
+</div>
+<!-- AI HUD -->
+<div class="absolute bottom-3 left-3 right-3 bg-black/60 backdrop-blur-md rounded-lg p-2 border border-white/10 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
+<span class="font-mono text-[9px] uppercase tracking-tighter text-on-surface-variant">AI Detecting...</span>
+</div>
+<span class="font-mono text-[9px] text-primary">OBJECT_FOCUSED</span>
+</div>
+</div>
+<!-- Controls Section: More compact and centered -->
+<div class="w-full max-w-xs flex flex-col items-center gap-4 py-2">
+<!-- Zoom Presets -->
+<div class="flex items-center gap-4 bg-surface-container-low/60 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/5">
+<button class="font-mono text-[10px] text-on-surface-variant hover:text-primary">.5</button>
+<button class="font-mono text-[10px] text-primary bg-primary/10 rounded-full w-7 h-7 flex items-center justify-center">1x</button>
+<button class="font-mono text-[10px] text-on-surface-variant hover:text-primary">2</button>
+<button class="font-mono text-[10px] text-on-surface-variant hover:text-primary">5</button>
+</div>
+<!-- Zoom Slider Interface -->
+<div class="w-full px-4">
+<div class="flex justify-between items-center mb-2">
+<span class="font-mono text-[10px] text-on-surface-variant uppercase">Auto</span>
+<span class="font-mono text-lg font-bold text-primary">1.0<span class="text-[10px] font-normal text-on-surface-variant ml-1">X</span></span>
+<span class="font-mono text-[10px] text-on-surface-variant uppercase">Wide</span>
+</div>
+<div class="h-1 w-full bg-surface-container-high rounded-full relative">
+<div class="absolute left-0 top-0 h-full w-1/3 bg-primary rounded-full"></div>
+<div class="absolute left-1/3 -top-1.5 w-4 h-4 bg-on-surface rounded-full shadow-lg border-2 border-surface"></div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Action Area -->
+<footer class="shrink-0 flex flex-col gap-2 pb-6 pt-2">
+<!-- Main Shutter Row -->
+<div class="flex justify-between items-center px-8">
+<!-- Gallery Thumbnail -->
+<button class="flex items-center justify-center w-11 h-11 rounded-full bg-surface-container-high border border-white/10 text-on-surface-variant hover:text-primary transition-colors active:scale-95">
+<span class="material-symbols-outlined" data-icon="rotate_left">rotate_left</span>
+</button>
+<!-- Main Shutter Button -->
+<div class="relative flex items-center justify-center">
+<div class="absolute inset-0 bg-primary/10 blur-xl rounded-full scale-150"></div>
+<button class="w-16 h-16 rounded-full border-4 border-on-surface bg-transparent p-1 transition-transform active:scale-95 duration-75 relative z-10">
+<div class="w-full h-full rounded-full bg-on-surface flex items-center justify-center">
+<div class="w-10 h-10 rounded-full border border-surface/20"></div>
+</div>
+</button>
+<!-- Notification Badge -->
+<div class="absolute -top-1 -right-1 z-20 bg-[#10b981] text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-surface-container-lowest shadow-lg">
+    12
+  </div>
+</div>
+<!-- Process/Forward Arrow -->
+<div class="w-12 flex justify-end">
+<button class="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-on-primary shadow-lg shadow-primary/20 active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-2xl font-bold" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Persistent Bottom Bar -->
+</footer>
+</body></html>

@@ -45,7 +45,11 @@ export default function App() {
     defaultAspectRatio: '1:1',
     saveLocation: getDefaultSaveLocation(),
     showPreviewAfterCapture: true,
+    useSameModelForNamingAndEditing: false,
+    geminiImageEditModel: 'gemini-2.5-flash-image',
+    geminiNamingModel: 'gemini-2.5-flash',
     imageQuality: 85,
+    autoGenerateFilename: false,
   });
 
   // Load settings from localStorage if available

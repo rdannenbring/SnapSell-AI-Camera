@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-tint": "#69f6b8",
+                    "tertiary-container": "#a589f8",
+                    "secondary-fixed-dim": "#9fc6ff",
+                    "primary": "#69f6b8",
+                    "surface-container": "#191919",
+                    "on-primary-fixed": "#00452d",
+                    "error": "#ff716c",
+                    "outline": "#757575",
+                    "surface-variant": "#262626",
+                    "surface": "#0e0e0e",
+                    "on-tertiary": "#31067e",
+                    "inverse-primary": "#006d4a",
+                    "inverse-surface": "#f9f9f9",
+                    "primary-fixed": "#69f6b8",
+                    "outline-variant": "#484848",
+                    "on-primary-fixed-variant": "#006544",
+                    "on-surface": "#ffffff",
+                    "secondary": "#64a8fe",
+                    "primary-container": "#06b77f",
+                    "tertiary-fixed": "#baa3ff",
+                    "error-dim": "#d7383b",
+                    "on-tertiary-container": "#230062",
+                    "on-secondary": "#00284e",
+                    "on-tertiary-fixed": "#1d0054",
+                    "secondary-container": "#0060ac",
+                    "primary-dim": "#58e7ab",
+                    "tertiary-fixed-dim": "#ad92ff",
+                    "inverse-on-surface": "#555555",
+                    "surface-dim": "#0e0e0e",
+                    "on-secondary-container": "#f6f7ff",
+                    "primary-fixed-dim": "#58e7ab",
+                    "on-error-container": "#ffa8a3",
+                    "surface-bright": "#2c2c2c",
+                    "on-background": "#ffffff",
+                    "on-primary-container": "#002919",
+                    "on-primary": "#005a3c",
+                    "secondary-fixed": "#b7d3ff",
+                    "on-error": "#490006",
+                    "surface-container-lowest": "#000000",
+                    "surface-container-highest": "#262626",
+                    "tertiary": "#b299ff",
+                    "background": "#0e0e0e",
+                    "tertiary-dim": "#a88cfb",
+                    "surface-container-low": "#131313",
+                    "on-secondary-fixed-variant": "#005294",
+                    "error-container": "#9f0519",
+                    "surface-container-high": "#1f1f1f",
+                    "secondary-dim": "#5ba0f5",
+                    "on-tertiary-fixed-variant": "#41208e",
+                    "on-surface-variant": "#ababab",
+                    "on-secondary-fixed": "#003563"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "display": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .editorial-shadow {
+            box-shadow: 0 -4px 24px rgba(16, 185, 129, 0.08);
+        }
+        .anodized-button {
+            background: linear-gradient(135deg, #69f6b8 0%, #06b77f 100%);
+        }
+        .hud-blur {
+            backdrop-filter: blur(16px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-container-lowest text-on-surface font-body selection:bg-primary selection:text-on-primary">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 py-4 bg-[#000000]/80 backdrop-blur-md">
+<div class="flex items-center gap-4">
+<button class="text-on-surface active:scale-95 duration-200 hover:bg-surface-container-highest rounded-full p-2">
+<span class="material-symbols-outlined text-2xl" data-icon="close">close</span>
+</button>
+<h1 class="text-xl font-headline font-semibold tracking-tight text-on-surface">New Shoot_01</h1>
+</div>
+<button class="px-6 py-2 rounded-full font-headline font-bold text-on-primary anodized-button active:scale-95 duration-200 transition-all">
+            Finish
+        </button>
+</header>
+<main class="min-h-screen pt-20 pb-40 flex flex-col items-center">
+<!-- Product Canvas -->
+<div class="relative w-full max-w-2xl aspect-[4/5] bg-surface-container-low overflow-hidden rounded-xl mx-4">
+<img alt="Product" class="w-full h-full object-cover" data-alt="professional product photography of a vibrant red performance sneaker on a dark sleek background with sharp dramatic lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGNrpcRZCk7UX6unZjPeW9SPtHrCLUBZnLYXJHhpCEiy9jpN7tOkob29QGIwq8tY2kABME_WCj478xda7PtNZrRZhq5jY2qeu_2BVX4sl1n0j4BIR6O4MQec_dILDqN02m1JivhXgs4sDz9MhJibfF8Us2Uor1M7EKD407vY7_3LDogabmtbt1VSCNJZifBN5Y_TzP6e8b9sZkwZpGdVHzXrW2L-UEliOFtmKvKrbrhMzusgMF6bdvaXterlZjz4Qv4EKkjtvV3y2l"/>
+<!-- AI HUD Overlay -->
+<div class="absolute top-6 right-6 flex flex-col gap-2 items-end">
+<div class="bg-surface-container-highest/70 hud-blur px-3 py-1.5 rounded-full flex items-center gap-2 border border-outline-variant/15">
+<span class="text-[10px] font-bold font-label uppercase tracking-widest text-primary">AI Confidence</span>
+<span class="font-label text-sm text-on-surface">98.4%</span>
+</div>
+</div>
+</div>
+<!-- Filter Selection Grid -->
+<section class="w-full max-w-4xl px-6 mt-10">
+<div class="flex items-center justify-between mb-6">
+<h2 class="text-xs font-label font-bold uppercase tracking-[0.2em] text-on-surface-variant">Recommended AI Filters</h2>
+<div class="h-px flex-1 mx-6 bg-outline-variant/15"></div>
+<span class="text-[11px] font-label font-bold text-primary px-3 py-1 bg-primary/10 rounded-full">3 Options</span>
+</div>
+<div class="grid grid-cols-3 gap-4">
+<!-- Enhance Filter -->
+<div class="group relative aspect-square bg-surface-container rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:bg-surface-container-high transition-all active:scale-95">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="auto_fix_high" style="font-variation-settings: 'FILL' 1;">auto_fix_high</span>
+</div>
+<div>
+<p class="font-headline font-semibold text-on-surface mb-1">Enhance</p>
+<p class="text-[10px] font-label text-on-surface-variant uppercase tracking-wider">Tone &amp; Detail</p>
+</div>
+<div class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="check_circle">check_circle</span>
+</div>
+</div>
+<!-- White BG Filter (Active selection state example) -->
+<div class="group relative aspect-square bg-surface-container-high border-2 border-primary/30 rounded-2xl p-4 flex flex-col justify-between cursor-pointer transition-all active:scale-95">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined" data-icon="layers" style="font-variation-settings: 'FILL' 1;">layers</span>
+</div>
+<div>
+<p class="font-headline font-semibold text-on-surface mb-1">White BG</p>
+<p class="text-[10px] font-label text-primary uppercase tracking-wider">Studio Pro</p>
+</div>
+<div class="absolute top-4 right-4">
+<span class="material-symbols-outlined text-primary" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+<!-- Lifestyle Filter -->
+<div class="group relative aspect-square bg-surface-container rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:bg-surface-container-high transition-all active:scale-95">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="image" style="font-variation-settings: 'FILL' 0;">image</span>
+</div>
+<div>
+<p class="font-headline font-semibold text-on-surface mb-1">Lifestyle</p>
+<p class="text-[10px] font-label text-on-surface-variant uppercase tracking-wider">Contextual</p>
+</div>
+</div>
+</div>
+<!-- Intensity Slider for AI Filters -->
+<div class="mt-12 bg-surface-container-low p-6 rounded-2xl border border-outline-variant/10">
+<div class="flex justify-between items-center mb-4">
+<label class="text-[11px] font-label font-bold uppercase tracking-[0.15em] text-on-surface-variant">Filter Intensity</label>
+<span class="font-label text-sm text-primary font-bold">85%</span>
+</div>
+<div class="relative w-full h-1 bg-surface-variant rounded-full">
+<div class="absolute top-0 left-0 h-full w-[85%] bg-primary rounded-full"></div>
+<div class="absolute top-1/2 left-[85%] -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-on-surface border-2 border-primary rounded-full shadow-lg"></div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center pb-8 pt-4 px-4 bg-[#000000]/90 backdrop-blur-xl shadow-[0_-4px_24px_rgba(16,185,129,0.08)] rounded-t-3xl">
+<!-- Inactive: Adjust -->
+<a class="flex flex-col items-center justify-center text-zinc-500 px-6 py-2 hover:text-emerald-300 transition-colors active:scale-90 duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="tune">tune</span>
+<span class="text-[10px] font-label font-bold uppercase tracking-widest">Adjust</span>
+</a>
+<!-- Active: AI Filters -->
+<a class="flex flex-col items-center justify-center bg-emerald-500/10 text-emerald-400 rounded-full px-8 py-2 active:scale-90 duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="auto_awesome" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<span class="text-[10px] font-label font-bold uppercase tracking-widest">AI Filters</span>
+</a>
+<!-- Inactive: Edit -->
+<a class="flex flex-col items-center justify-center text-zinc-500 px-6 py-2 hover:text-emerald-300 transition-colors active:scale-90 duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="edit_note">edit_note</span>
+<span class="text-[10px] font-label font-bold uppercase tracking-widest">Edit</span>
+</a>
+</nav>
+</body></html>

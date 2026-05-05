@@ -10,8 +10,12 @@ export interface AppSettings {
   saveLocation: string;
   showPreviewAfterCapture: boolean;
   geminiApiKey?: string;
+  geminiImageEditModel?: string;
+  geminiNamingModel?: string;
+  useSameModelForNamingAndEditing?: boolean;
   imageQuality: number; // 50–100 JPEG quality (default 85)
   cameraResolution?: { width: number; height: number }; // actual sensor resolution
+  autoGenerateFilename: boolean; // use AI to suggest item name on save when empty
 }
 
 export interface PhotoData {
