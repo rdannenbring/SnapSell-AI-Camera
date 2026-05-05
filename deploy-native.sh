@@ -19,4 +19,5 @@ echo "📱 Installing APK via adb..."
 "$ANDROID_HOME/platform-tools/adb" shell pm install -r -t /data/local/tmp/app.apk
 
 SIZE=$(du -h "$APK_PATH" | cut -f1)
-echo "✅ Native deploy complete! ($SIZE)"echo "🕒 $(date)"
+echo "✅ Native deploy complete! ($SIZE)"
+echo "🕒 $(date)"

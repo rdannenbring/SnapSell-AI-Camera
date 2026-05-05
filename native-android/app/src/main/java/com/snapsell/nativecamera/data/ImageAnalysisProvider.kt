@@ -95,13 +95,3 @@ object ImageAnalysisFactory {
         }
     }
 }
-</include>
-<task_progress>- [x] Explore current codebase architecture
-- [x] Create feature branch
-- [x] Add ML Kit dependencies to build.gradle.kts
-- [ ] Create ImageAnalysisProvider interface + LocalProvider + CloudProvider + Factory
-- [ ] Add Model Selection preference to Settings screen UI
-- [ ] Update EditorScreen to use factory + hide badge for local mode
-- [ ] Build and verify
-- [ ] Commit to feature branch</task_progress>
-</write_to_file>
