@@ -35,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.snapsell.nativecamera.camera.AspectRatioMode
 import androidx.activity.compose.BackHandler
+import com.snapsell.nativecamera.data.AiAnalysisMode
+import com.snapsell.nativecamera.data.ImageAnalysisFactory
 import com.snapsell.nativecamera.ui.theme.Primary
 import com.snapsell.nativecamera.BuildConfig
 import kotlinx.coroutines.Dispatchers
@@ -376,6 +378,103 @@ fun SettingsScreen(
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace
                 )
+            }
+
+            var aiAnalysisMode by remember { mutableStateOf(ImageAnalysisFactory.getAnalysisMode(context)) }
+
+            // AI Analysis Mode section
+            SettingsSection(title = "Model Selection") {
+                Text(
+                    "AI Analysis Mode",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Choose how photos are analyzed for naming and descriptions.",
+                    color = Color.White.copy(alpha = 0.4f),
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+                Spacer(Modifier.height(12.dp))
+
+                AiAnalysisMode.entries.forEach { mode ->
+                    val selected = aiAnalysisMode == mode
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                            .clickable {
+                                if (mode == AiAnalysisMode.LOCAL && !ImageAnalysisFactory.isLocalAiAvailable()) {
+                                    // Hardware doesn't support local — fallback with notice
+                                    aiAnalysisMode = AiAnalysisMode.CLOUD
+                                    ImageAnalysisFactory.setAnalysisMode(context, AiAnalysisMode.CLOUD)
+                                    modelStatus = "On-device AI not available on this device. Using Cloud AI."
+                                } else {
+                                    aiAnalysisMode = mode
+                                    ImageAnalysisFactory.setAnalysisMode(context, mode)
+                                }
+                            },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (selected) Primary.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.03f)
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (selected) Primary else Color.White.copy(alpha = 0.1f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selected,
+                                onClick = {
+                                    if (mode == AiAnalysisMode.LOCAL && !ImageAnalysisFactory.isLocalAiAvailable()) {
+                                        aiAnalysisMode = AiAnalysisMode.CLOUD
+                                        ImageAnalysisFactory.setAnalysisMode(context, AiAnalysisMode.CLOUD)
+                                        modelStatus = "On-device AI not available on this device. Using Cloud AI."
+                                    } else {
+                                        aiAnalysisMode = mode
+                                        ImageAnalysisFactory.setAnalysisMode(context, mode)
+                                    }
+                                },
+                                colors = RadioButtonDefaults.colors(selectedColor = Primary)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    mode.displayName,
+                                    color = if (selected) Primary else Color.White.copy(alpha = 0.7f),
+                                    fontSize = 13.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    mode.description,
+                                    color = Color.White.copy(alpha = 0.4f),
+                                    fontSize = 10.sp,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (aiAnalysisMode == AiAnalysisMode.LOCAL) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "⚡ On-device: No API key needed. Labels are generated locally via ML Kit.",
+                        color = Color(0xFF4ADE80).copy(alpha = 0.7f),
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
             }
 
             // Gemini API Key section

@@ -101,6 +101,9 @@ dependencies {
     // DataStore for settings
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
+    // ML Kit — on-device image labeling (local AI analysis)
+    implementation("com.google.mlkit:image-labeling:17.0.7")
+
     // Native image cropper
     implementation("com.github.yalantis:ucrop:2.2.8")
 

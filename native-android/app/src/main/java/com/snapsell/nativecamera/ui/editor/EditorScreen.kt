@@ -64,6 +64,8 @@ import androidx.activity.compose.BackHandler
 import androidx.core.content.FileProvider
 import androidx.compose.foundation.Image
 import androidx.compose.ui.graphics.asImageBitmap
+import com.snapsell.nativecamera.data.AiAnalysisMode
+import com.snapsell.nativecamera.data.ImageAnalysisFactory
 import com.snapsell.nativecamera.ui.settings.AppSettings
 import com.snapsell.nativecamera.ui.settings.AppSettings.getSaveLocation
 import com.snapsell.nativecamera.ui.theme.Primary
@@ -254,11 +256,29 @@ fun EditorScreen(
     }
 
 
+    // Determine current AI analysis mode
+    val analysisMode = remember { ImageAnalysisFactory.getAnalysisMode(context) }
+    val isLocalMode = analysisMode == AiAnalysisMode.LOCAL
+
+    // Unified name suggestion that routes through the factory
+    suspend fun suggestNameViaFactory(photoPath: String): String {
+        return if (isLocalMode) {
+            val provider = ImageAnalysisFactory.getProvider(context)
+            val bitmap = withContext(Dispatchers.IO) { BitmapFactory.decodeFile(photoPath) }
+                ?: throw Exception("Cannot read photo")
+            provider.suggestName(bitmap)
+        } else {
+            val apiKey = AppSettings.getGeminiApiKey(context)
+            if (apiKey.isBlank()) throw Exception("No Gemini API key set.")
+            suggestItemName(apiKey, photoPath, resolveNamingModel(context))
+        }
+    }
+
     // Auto-suggest filename when first photo/key become available if setting is enabled
     LaunchedEffect(photoPaths.firstOrNull(), AppSettings.getGeminiApiKey(context)) {
         android.util.Log.d(
             NAME_DEBUG_TAG,
-            "Auto-suggest effect fired. photoPresent=${photoPaths.isNotEmpty()}, itemNameBlank=${itemName.isBlank()}"
+            "Auto-suggest effect fired. photoPresent=${photoPaths.isNotEmpty()}, itemNameBlank=${itemName.isBlank()}, mode=$analysisMode"
         )
         if (itemName.isBlank() && photoPaths.isNotEmpty()) {
             val autoSuggest = AppSettings.getAutoSuggestFilename(context)
@@ -266,14 +286,9 @@ fun EditorScreen(
             if (autoSuggest) {
                 isSuggestingName = true
                 try {
-                    val apiKey = AppSettings.getGeminiApiKey(context)
-                    android.util.Log.d(NAME_DEBUG_TAG, "Auto-suggest apiKeyPresent=${apiKey.isNotBlank()}")
-                    if (apiKey.isNotBlank()) {
-                        val name = suggestItemName(
-                            apiKey,
-                            photoPaths.first(),
-                            resolveNamingModel(context)
-                        )
+                    // LOCAL mode doesn't need an API key
+                    if (isLocalMode || AppSettings.getGeminiApiKey(context).isNotBlank()) {
+                        val name = suggestNameViaFactory(photoPaths.first())
                         android.util.Log.d(NAME_DEBUG_TAG, "Auto-suggest raw name='$name'")
                         val cleaned = sanitizeFilenameBase(name)
                         android.util.Log.d(NAME_DEBUG_TAG, "Auto-suggest cleaned name='$cleaned'")
@@ -403,16 +418,15 @@ fun EditorScreen(
                             scope.launch {
                                 isSuggestingName = true
                                 try {
-                                    val apiKey = AppSettings.getGeminiApiKey(context)
-                                    if (apiKey.isBlank()) {
-                                        errorMessage = "No Gemini API key set."
-                                        return@launch
+                                    // Route through factory (local ML Kit or cloud Gemini)
+                                    if (!isLocalMode) {
+                                        val apiKey = AppSettings.getGeminiApiKey(context)
+                                        if (apiKey.isBlank()) {
+                                            errorMessage = "No Gemini API key set."
+                                            return@launch
+                                        }
                                     }
-                                    val name = suggestItemName(
-                                        apiKey,
-                                        photoPaths.first(),
-                                        resolveNamingModel(context)
-                                    )
+                                    val name = suggestNameViaFactory(photoPaths.first())
                                     android.util.Log.d(NAME_DEBUG_TAG, "Manual suggest raw name='$name'")
                                     val cleaned = sanitizeFilenameBase(name)
                                     android.util.Log.d(NAME_DEBUG_TAG, "Manual suggest cleaned name='$cleaned'")
