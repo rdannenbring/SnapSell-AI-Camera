@@ -65,6 +65,7 @@ private val KEY_GEMINI_IMAGE_EDIT_MODEL = "gemini_image_edit_model"
 private val KEY_GEMINI_NAMING_MODEL = "gemini_naming_model"
 private val KEY_USE_SAME_MODEL = "gemini_use_same_model"
 private val KEY_AI_PROVIDER = "ai_provider"
+private val KEY_ALLOW_REMOTE_FOR_COMPLEX_AI = "allow_remote_for_complex_ai"
 
 private const val DEFAULT_IMAGE_EDIT_MODEL = "gemini-2.5-flash-image"
 private const val DEFAULT_NAMING_MODEL = "gemini-2.0-flash"
@@ -267,6 +268,17 @@ object AppSettings {
     fun setSaveLocation(context: Context, path: String) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit().putString(KEY_SAVE_LOCATION, path).apply()
+    }
+
+    /** Allow remote AI for complex filters (e.g. Lifestyle) when in local mode */
+    fun getAllowRemoteForComplexAi(context: Context): Boolean {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean(KEY_ALLOW_REMOTE_FOR_COMPLEX_AI, false)
+    }
+
+    fun setAllowRemoteForComplexAi(context: Context, allow: Boolean) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_ALLOW_REMOTE_FOR_COMPLEX_AI, allow).apply()
     }
 
 }
@@ -474,6 +486,40 @@ fun SettingsScreen(
                         fontSize = 10.sp,
                         fontFamily = FontFamily.Monospace
                     )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // Allow remote AI for complex filters toggle
+                    var allowRemoteForComplex by remember { mutableStateOf(AppSettings.getAllowRemoteForComplexAi(context)) }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Allow Cloud AI for Complex Filters",
+                                color = Color.White.copy(alpha = 0.7f),
+                                fontSize = 13.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                "Enable to use cloud AI for filters that can’t run on-device (e.g. Lifestyle). Requires a valid API key.",
+                                color = Color.White.copy(alpha = 0.4f),
+                                fontSize = 11.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                        Switch(
+                            checked = allowRemoteForComplex,
+                            onCheckedChange = { enabled ->
+                                allowRemoteForComplex = enabled
+                                AppSettings.setAllowRemoteForComplexAi(context, enabled)
+                            },
+                            colors = SwitchDefaults.colors(checkedTrackColor = Primary)
+                        )
+                    }
                 }
             }
 

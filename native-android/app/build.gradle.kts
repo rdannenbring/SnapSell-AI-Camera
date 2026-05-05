@@ -104,6 +104,9 @@ dependencies {
     // ML Kit — on-device image labeling (local AI analysis)
     implementation("com.google.mlkit:image-labeling:17.0.7")
 
+    // ML Kit — on-device subject segmentation (local background removal)
+    implementation("com.google.mlkit:segmentation-selfie:16.0.0-beta5")
+
     // Native image cropper
     implementation("com.github.yalantis:ucrop:2.2.8")
 

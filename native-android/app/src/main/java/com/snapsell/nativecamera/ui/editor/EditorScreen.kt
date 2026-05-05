@@ -66,6 +66,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.graphics.asImageBitmap
 import com.snapsell.nativecamera.data.AiAnalysisMode
 import com.snapsell.nativecamera.data.ImageAnalysisFactory
+import com.snapsell.nativecamera.data.AiFilter
+import com.snapsell.nativecamera.data.LocalFilterProcessor
 import com.snapsell.nativecamera.ui.settings.AppSettings
 import com.snapsell.nativecamera.ui.settings.AppSettings.getSaveLocation
 import com.snapsell.nativecamera.ui.theme.Primary
@@ -103,11 +105,6 @@ data class PhotoAdjustments(
     val appliedFilter: AiFilter? = null
 )
 
-enum class AiFilter(val label: String, val prompt: String, val color: Color) {
-    ENHANCE("Enhance", "Enhance this product photo for an online store. Improve lighting, clarity, and colors while keeping it natural.", Color(0xFF60A5FA)),
-    WHITE_BG("White BG", "Remove the background and replace it with a clean, professional studio white background. Keep the product (clothing/accessory) perfectly intact.", Color(0xFF34D399)),
-    LIFESTYLE("Lifestyle", "Place this item in a professional lifestyle setting suitable for an online fashion store. Ensure the lighting matches.", Color(0xFFC084FC))
-}
 
 enum class EditorTab(val label: String) {
     AI_FILTERS("AI Filters"),
