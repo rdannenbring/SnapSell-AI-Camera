@@ -395,7 +395,7 @@ fun SettingsScreen(
             var aiAnalysisMode by remember { mutableStateOf(ImageAnalysisFactory.getAnalysisMode(context)) }
 
             // AI Analysis Mode section
-            SettingsSection(title = "Model Selection") {
+            SettingsSection(title = "AI Configuration") {
                 Text(
                     "AI Analysis Mode",
                     color = Color.White.copy(alpha = 0.7f),
@@ -521,10 +521,41 @@ fun SettingsScreen(
                         )
                     }
                 }
+                Spacer(Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Auto-Generate Filename",
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontSize = 13.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            "Automatically suggest an item name from the photo",
+                            color = Color.White.copy(alpha = 0.4f),
+                            fontSize = 11.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                    Switch(
+                        checked = autoSuggestFilename,
+                        onCheckedChange = { enabled ->
+                            autoSuggestFilename = enabled
+                            AppSettings.setAutoSuggestFilename(context, enabled)
+                        },
+                        colors = SwitchDefaults.colors(checkedTrackColor = Primary)
+                    )
+                }
             }
 
             // Gemini API Key section
-            SettingsSection(title = "AI Configuration") {
+            SettingsSection(title = "Remote AI Configuration") {
                 Text("AI Provider", color = colorScheme.onSurfaceVariant, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
                 Spacer(Modifier.height(6.dp))
                 AiProviderDropdown(
@@ -667,37 +698,6 @@ fun SettingsScreen(
                     )
                 }
 
-                Spacer(Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            "Auto-Generate Filename",
-                            color = Color.White.copy(alpha = 0.7f),
-                            fontSize = 13.sp,
-                            fontFamily = FontFamily.Monospace
-                        )
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            "Automatically suggest an item name from the photo",
-                            color = Color.White.copy(alpha = 0.4f),
-                            fontSize = 11.sp,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    }
-                    Switch(
-                        checked = autoSuggestFilename,
-                        onCheckedChange = { enabled ->
-                            autoSuggestFilename = enabled
-                            AppSettings.setAutoSuggestFilename(context, enabled)
-                        },
-                        colors = SwitchDefaults.colors(checkedTrackColor = Primary)
-                    )
-                }
 
                 Spacer(Modifier.height(16.dp))
 
